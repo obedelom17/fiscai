@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
 import emailjs from '@emailjs/browser'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type Client = { id: string; raison_sociale: string; email_contact: string }
 type Dossier = {
@@ -169,17 +170,23 @@ export default function DossiersPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold" style={{ color: '#1a3c2e' }}>Dossiers Fiscaux</h1>
             <p className="text-gray-500 mt-1">Suivi des obligations fiscales — OTR Togo</p>
           </div>
-          <button onClick={() => setShowForm(true)}
-            className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg hover:opacity-90"
+          <motion.button onClick={() => setShowForm(true)}
+            whileHover={{ scale: 1.03, boxShadow: '0 8px 25px rgba(45,106,79,0.4)' }}
+            whileTap={{ scale: 0.97 }}
+            className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg"
             style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
             + Nouveau dossier
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
@@ -189,159 +196,208 @@ export default function DossiersPage() {
             { label: 'Reçus', value: stats.recu, color: '#3b82f6' },
             { label: 'Validés', value: stats.valide, color: '#2d6a4f' },
           ].map((s, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <motion.div key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
+              whileHover={{ y: -3, boxShadow: '0 8px 25px rgba(0,0,0,0.08)' }}
+              className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-default">
               <p className="text-xs text-gray-500 uppercase font-medium">{s.label}</p>
               <p className="text-3xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
 
         {/* Alerte urgences */}
-        {stats.urgents > 0 && (
-          <div className="mb-6 p-4 rounded-2xl border flex items-center gap-3"
-            style={{ background: '#fff8ed', borderColor: '#fcd34d' }}>
-            <div className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0"></div>
-            <p className="text-sm font-medium text-yellow-800">
-              {stats.urgents} dossier(s) avec échéance dans moins de 5 jours — Action requise
-            </p>
-          </div>
-        )}
+        <AnimatePresence>
+          {stats.urgents > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-6 p-4 rounded-2xl border flex items-center gap-3"
+              style={{ background: '#fff8ed', borderColor: '#fcd34d' }}>
+              <motion.div
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0" />
+              <p className="text-sm font-medium text-yellow-800">
+                {stats.urgents} dossier(s) avec échéance dans moins de 5 jours — Action requise
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Formulaire */}
-        {showForm && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold" style={{ color: '#1a3c2e' }}>Nouveau dossier fiscal</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Client</label>
-                <select value={clientId} onChange={e => setClientId(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                  <option value="">Sélectionner un client</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.raison_sociale}</option>)}
-                </select>
+        <AnimatePresence>
+          {showForm && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.98 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold" style={{ color: '#1a3c2e' }}>Nouveau dossier fiscal</h2>
+                <motion.button whileHover={{ rotate: 90 }} transition={{ duration: 0.2 }}
+                  onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</motion.button>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Type d'impôt</label>
-                <select value={typeImpot} onChange={e => setTypeImpot(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                  <option value="TVA">TVA</option>
-                  <option value="IRPP">IRPP</option>
-                  <option value="IS">Impôt sur les Sociétés</option>
-                  <option value="acompte">Acompte</option>
-                </select>
-              </div>
-              {(typeImpot === 'TVA' || typeImpot === 'acompte') && (
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Mois</label>
-                  <select value={periodeMois} onChange={e => setPeriodeMois(Number(e.target.value))}
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Client</label>
+                  <select value={clientId} onChange={e => setClientId(e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                    {MOIS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                    <option value="">Sélectionner un client</option>
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.raison_sociale}</option>)}
                   </select>
                 </div>
-              )}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Année</label>
-                <input type="number" value={periodeAnnee} onChange={e => setPeriodeAnnee(Number(e.target.value))}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Type d'impôt</label>
+                  <select value={typeImpot} onChange={e => setTypeImpot(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="TVA">TVA</option>
+                    <option value="IRPP">IRPP</option>
+                    <option value="IS">Impôt sur les Sociétés</option>
+                    <option value="acompte">Acompte</option>
+                  </select>
+                </div>
+                {(typeImpot === 'TVA' || typeImpot === 'acompte') && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Mois</label>
+                    <select value={periodeMois} onChange={e => setPeriodeMois(Number(e.target.value))}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                      {MOIS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                    </select>
+                  </motion.div>
+                )}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Année</label>
+                  <input type="number" value={periodeAnnee} onChange={e => setPeriodeAnnee(Number(e.target.value))}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Date d'échéance</label>
+                  <input type="date" value={dateEcheance} onChange={e => setDateEcheance(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Date d'échéance</label>
-                <input type="date" value={dateEcheance} onChange={e => setDateEcheance(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <div className="flex gap-3 mt-5">
+                <motion.button onClick={ajouterDossier} disabled={saving}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                  {saving ? 'Enregistrement...' : 'Enregistrer'}
+                </motion.button>
+                <motion.button onClick={() => setShowForm(false)}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  className="px-6 py-2.5 rounded-xl text-sm border border-gray-200 text-gray-600">
+                  Annuler
+                </motion.button>
               </div>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={ajouterDossier} disabled={saving}
-                className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                {saving ? 'Enregistrement...' : 'Enregistrer'}
-              </button>
-              <button onClick={() => setShowForm(false)}
-                className="px-6 py-2.5 rounded-xl text-sm border border-gray-200 text-gray-600">
-                Annuler
-              </button>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Panel dossier actif */}
-        {dossierActif && (
-          <div className="bg-white rounded-2xl shadow-lg border-l-4 p-6 mb-6" style={{ borderLeftColor: '#2d6a4f' }}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="font-bold text-gray-800">
-                  {dossierActif.clients.raison_sociale}
-                </h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {dossierActif.type_impot} — {dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] + ' ' : ''}{dossierActif.periode_annee} — Échéance : {new Date(dossierActif.date_echeance).toLocaleDateString('fr-FR')}
-                </p>
-              </div>
-              <button onClick={() => { setDossierActif(null); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
-                className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              {/* Upload PDF */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Justificatif PDF</h3>
-                <label htmlFor="pdf-upload"
-                  className="block border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:border-green-400"
-                  style={{ borderColor: fichierNom ? '#2d6a4f' : '#d1d5db', background: fichierNom ? '#f0f9f4' : 'white' }}>
-                  <input ref={fileRef} type="file" accept=".pdf" className="hidden" id="pdf-upload"
-                    onChange={e => setFichierNom(e.target.files?.[0]?.name || '')} />
-                  <div className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
-                    style={{ background: fichierNom ? '#2d6a4f' : '#f3f4f6' }}>
-                    <svg className="w-5 h-5" fill="none" stroke={fichierNom ? 'white' : '#9ca3af'} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  {fichierNom ? (
-                    <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>{fichierNom}</p>
-                  ) : (
-                    <>
-                      <p className="text-sm text-gray-500">Cliquez pour sélectionner</p>
-                      <p className="text-xs text-gray-400 mt-1">Format PDF uniquement</p>
-                    </>
-                  )}
-                </label>
-                <button onClick={() => uploadPDF(dossierActif)} disabled={uploading || !fichierNom}
-                  className="mt-3 w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-40 transition-all"
-                  style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                  {uploading ? 'Upload en cours...' : 'Uploader le document'}
-                </button>
+        <AnimatePresence>
+          {dossierActif && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white rounded-2xl shadow-lg border-l-4 p-6 mb-6"
+              style={{ borderLeftColor: '#2d6a4f' }}>
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="font-bold text-gray-800">{dossierActif.clients.raison_sociale}</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {dossierActif.type_impot} — {dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] + ' ' : ''}{dossierActif.periode_annee} — Échéance : {new Date(dossierActif.date_echeance).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+                <motion.button whileHover={{ rotate: 90 }} transition={{ duration: 0.2 }}
+                  onClick={() => { setDossierActif(null); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
+                  className="text-gray-400 hover:text-gray-600 text-xl">✕</motion.button>
               </div>
 
-              {/* Email relance */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Email de relance IA</h3>
-                <button onClick={() => genererEmail(dossierActif)} disabled={generatingEmail}
-                  className="w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50 mb-3"
-                  style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
-                  {generatingEmail ? 'Génération en cours...' : 'Générer avec l\'IA Groq'}
-                </button>
-                {emailContenu && (
-                  <>
-                    <textarea value={emailContenu} onChange={e => setEmailContenu(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm h-36 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
-                    <button onClick={() => envoyerEmail(dossierActif)} disabled={sendingEmail || emailEnvoye}
-                      className="mt-2 w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 transition-all"
-                      style={emailEnvoye
-                        ? { background: '#f0f9f4', color: '#2d6a4f', border: '1px solid #2d6a4f' }
-                        : { background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)', color: 'white' }}>
-                      {sendingEmail ? 'Envoi en cours...' : emailEnvoye ? 'Email envoyé avec succes' : 'Envoyer au client'}
-                    </button>
-                  </>
-                )}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Upload PDF */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Justificatif PDF</h3>
+                  <motion.label htmlFor="pdf-upload"
+                    whileHover={{ borderColor: '#2d6a4f', background: '#f0f9f4' }}
+                    className="block border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all"
+                    style={{ borderColor: fichierNom ? '#2d6a4f' : '#d1d5db', background: fichierNom ? '#f0f9f4' : 'white' }}>
+                    <input ref={fileRef} type="file" accept=".pdf" className="hidden" id="pdf-upload"
+                      onChange={e => setFichierNom(e.target.files?.[0]?.name || '')} />
+                    <motion.div
+                      animate={{ scale: fichierNom ? 1.1 : 1 }}
+                      className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                      style={{ background: fichierNom ? '#2d6a4f' : '#f3f4f6' }}>
+                      <svg className="w-5 h-5" fill="none" stroke={fichierNom ? 'white' : '#9ca3af'} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </motion.div>
+                    {fichierNom ? (
+                      <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>{fichierNom}</p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-500">Cliquez pour sélectionner</p>
+                        <p className="text-xs text-gray-400 mt-1">Format PDF uniquement</p>
+                      </>
+                    )}
+                  </motion.label>
+                  <motion.button onClick={() => uploadPDF(dossierActif)} disabled={uploading || !fichierNom}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="mt-3 w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-40"
+                    style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                    {uploading ? 'Upload en cours...' : 'Uploader le document'}
+                  </motion.button>
+                </div>
+
+                {/* Email relance */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Email de relance IA</h3>
+                  <motion.button onClick={() => genererEmail(dossierActif)} disabled={generatingEmail}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50 mb-3"
+                    style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+                    {generatingEmail ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                        Génération en cours...
+                      </span>
+                    ) : "Générer avec l'IA Groq"}
+                  </motion.button>
+                  <AnimatePresence>
+                    {emailContenu && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}>
+                        <textarea value={emailContenu} onChange={e => setEmailContenu(e.target.value)}
+                          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm h-36 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+                        <motion.button onClick={() => envoyerEmail(dossierActif)} disabled={sendingEmail || emailEnvoye}
+                          whileHover={{ scale: emailEnvoye ? 1 : 1.02 }}
+                          whileTap={{ scale: emailEnvoye ? 1 : 0.98 }}
+                          className="mt-2 w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 transition-all"
+                          style={emailEnvoye
+                            ? { background: '#f0f9f4', color: '#2d6a4f', border: '1px solid #2d6a4f' }
+                            : { background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)', color: 'white' }}>
+                          {sendingEmail ? 'Envoi en cours...' : emailEnvoye ? 'Email envoyé avec succès' : 'Envoyer au client'}
+                        </motion.button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Filtres */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-4 flex-wrap">
           {[
             { key: 'tous', label: 'Tous' },
             { key: 'en_attente', label: 'En attente' },
@@ -349,25 +405,34 @@ export default function DossiersPage() {
             { key: 'valide', label: 'Validés' },
             { key: 'televerse_otr', label: 'Téléversés OTR' },
           ].map(f => (
-            <button key={f.key} onClick={() => setFiltreStatut(f.key)}
+            <motion.button key={f.key} onClick={() => setFiltreStatut(f.key)}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               className="px-4 py-2 rounded-xl text-xs font-medium transition-all"
               style={filtreStatut === f.key
                 ? { background: '#1a3c2e', color: 'white' }
                 : { background: 'white', color: '#6b7280', border: '1px solid #e5e7eb' }}>
               {f.label}
-            </button>
+            </motion.button>
           ))}
         </div>
 
         {/* Table */}
         {loading ? (
-          <div className="text-center py-20 text-gray-400">Chargement...</div>
-        ) : dossiersFiltres.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-            <p className="text-gray-400 text-sm">Aucun dossier pour ce filtre</p>
+          <div className="flex items-center justify-center py-20">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              className="w-8 h-8 rounded-full border-2"
+              style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
           </div>
+        ) : dossiersFiltres.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="text-center py-20 bg-white rounded-2xl border border-gray-100">
+            <p className="text-gray-400 text-sm">Aucun dossier pour ce filtre</p>
+          </motion.div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
@@ -377,69 +442,72 @@ export default function DossiersPage() {
                 </tr>
               </thead>
               <tbody>
-                {dossiersFiltres.map((d, i) => (
-                  <tr key={d.id}
-                    className="border-b border-gray-50 hover:bg-green-50 transition-colors"
-                    style={{
-                      background: estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
-                        ? '#fff8f8'
-                        : estUrgent(d.date_echeance) ? '#fffbeb'
-                        : i % 2 === 0 ? 'white' : '#fafffe'
-                    }}>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                          style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                          {d.clients?.raison_sociale[0]}
+                <AnimatePresence>
+                  {dossiersFiltres.map((d, i) => (
+                    <motion.tr key={d.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.04 }}
+                      className="border-b border-gray-50 hover:bg-green-50 transition-colors"
+                      style={{
+                        background: estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
+                          ? '#fff8f8' : estUrgent(d.date_echeance) ? '#fffbeb'
+                          : i % 2 === 0 ? 'white' : '#fafffe'
+                      }}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                            {d.clients?.raison_sociale[0]}
+                          </div>
+                          <span className="text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</span>
                         </div>
-                        <span className="text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-semibold px-2 py-1 rounded-lg"
-                        style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
-                        {d.type_impot}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {d.periode_mois ? `${MOIS[d.periode_mois - 1]} ` : ''}{d.periode_annee}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className={
-                        estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
-                          ? 'text-red-600 font-semibold'
-                          : estUrgent(d.date_echeance) ? 'text-yellow-600 font-semibold'
-                          : 'text-gray-500'
-                      }>
-                        {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>
-                        {STATUT_LABELS[d.statut]}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
-                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none bg-white">
-                        <option value="en_attente">En attente</option>
-                        <option value="recu">Reçu</option>
-                        <option value="valide">Validé</option>
-                        <option value="televerse_otr">Téléversé OTR</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button onClick={() => { setDossierActif(d); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
-                        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
-                        style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
-                        Gérer
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-semibold px-2 py-1 rounded-lg"
+                          style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                          {d.type_impot}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {d.periode_mois ? `${MOIS[d.periode_mois - 1]} ` : ''}{d.periode_annee}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
+                          ? 'text-red-600 font-semibold' : estUrgent(d.date_echeance)
+                          ? 'text-yellow-600 font-semibold' : 'text-gray-500'}>
+                          {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs px-3 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>
+                          {STATUT_LABELS[d.statut]}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none bg-white">
+                          <option value="en_attente">En attente</option>
+                          <option value="recu">Reçu</option>
+                          <option value="valide">Validé</option>
+                          <option value="televerse_otr">Téléversé OTR</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4">
+                        <motion.button
+                          onClick={() => { setDossierActif(d); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
+                          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                          className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                          style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                          Gérer
+                        </motion.button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
               </tbody>
             </table>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
