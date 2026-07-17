@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
+import Navbar from '@/components/Navbar'
 import emailjs from '@emailjs/browser'
 
 type Client = { id: string; raison_sociale: string; email_contact: string }
@@ -50,6 +51,8 @@ export default function DossiersPage() {
   const [emailContenu, setEmailContenu] = useState('')
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailEnvoye, setEmailEnvoye] = useState(false)
+  const [fichierNom, setFichierNom] = useState('')
+  const [filtreStatut, setFiltreStatut] = useState('tous')
   const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -88,36 +91,22 @@ export default function DossiersPage() {
     charger()
   }
 
- async function uploadPDF(dossier: Dossier) {
-  const file = fileRef.current?.files?.[0]
-  if (!file) { alert('Aucun fichier sélectionné'); return }
-  setUploading(true)
-  const path = `${dossier.id}/${file.name}`
-  
-  const { data, error } = await supabase.storage
-    .from('documents-fiscaux')
-    .upload(path, file, { upsert: true })
-  
-  console.log('Upload data:', data)
-  console.log('Upload error:', JSON.stringify(error))
-  
-  if (error) {
-    alert('Erreur upload: ' + error.message)
+  async function uploadPDF(dossier: Dossier) {
+    const file = fileRef.current?.files?.[0]
+    if (!file) { alert('Aucun fichier sélectionné'); return }
+    setUploading(true)
+    const path = `${dossier.id}/${file.name}`
+    const { error } = await supabase.storage.from('documents-fiscaux').upload(path, file, { upsert: true })
+    if (error) { alert('Erreur upload: ' + error.message); setUploading(false); return }
+    await supabase.from('documents').insert({
+      dossier_id: dossier.id, nom_fichier: file.name, url_stockage: path, type_document: file.type
+    })
+    await supabase.from('dossiers_fiscaux').update({ statut: 'recu' }).eq('id', dossier.id)
+    charger()
+    if (fileRef.current) fileRef.current.value = ''
+    setFichierNom('')
     setUploading(false)
-    return
   }
-  
-  await supabase.from('documents').insert({
-    dossier_id: dossier.id,
-    nom_fichier: file.name,
-    url_stockage: path,
-    type_document: file.type
-  })
-  await supabase.from('dossiers_fiscaux').update({ statut: 'recu' }).eq('id', dossier.id)
-  charger()
-  if (fileRef.current) fileRef.current.value = ''
-  setUploading(false)
-}
 
   async function genererEmail(dossier: Dossier) {
     setGeneratingEmail(true)
@@ -140,18 +129,11 @@ export default function DossiersPage() {
     await emailjs.send(
       process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
       process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-      {
-        to_email: dossier.clients.email_contact,
-        from_name: 'Experts Afrique Conseils',
-        message: emailContenu,
-      },
+      { to_email: dossier.clients.email_contact, from_name: 'Experts Afrique Conseils', message: emailContenu },
       process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
     )
     await supabase.from('relances').insert({
-      dossier_id: dossier.id,
-      client_id: dossier.client_id,
-      contenu_email: emailContenu,
-      statut: 'envoye'
+      dossier_id: dossier.id, client_id: dossier.client_id, contenu_email: emailContenu, statut: 'envoye'
     })
     setEmailEnvoye(true)
     setSendingEmail(false)
@@ -170,51 +152,81 @@ export default function DossiersPage() {
     return new Date(date) < aujourd
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">F</span>
-          </div>
-          <span className="font-bold text-gray-800">FiscAl</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a href="/dashboard/clients" className="text-sm text-gray-500 hover:text-gray-800">Clients</a>
-          <a href="/dashboard/dossiers" className="text-sm font-medium text-blue-600">Dossiers</a>
-          <a href="/dashboard/assistant" className="text-sm text-gray-500 hover:text-gray-800">Assistant IA</a>
-          <a href="/admin/statistiques" className="text-sm text-gray-500 hover:text-gray-800">Statistiques</a>
-        </div>
-      </nav>
+  const dossiersFiltres = filtreStatut === 'tous' ? dossiers : dossiers.filter(d => d.statut === filtreStatut)
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
+  const stats = {
+    total: dossiers.length,
+    en_attente: dossiers.filter(d => d.statut === 'en_attente').length,
+    recu: dossiers.filter(d => d.statut === 'recu').length,
+    valide: dossiers.filter(d => d.statut === 'valide' || d.statut === 'televerse_otr').length,
+    urgents: dossiers.filter(d => estUrgent(d.date_echeance) && d.statut !== 'televerse_otr').length,
+  }
+
+  return (
+    <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Dossiers fiscaux</h1>
-            <p className="text-gray-500 text-sm mt-1">{dossiers.length} dossier(s) au total</p>
+            <h1 className="text-3xl font-bold" style={{ color: '#1a3c2e' }}>Dossiers Fiscaux</h1>
+            <p className="text-gray-500 mt-1">Suivi des obligations fiscales — OTR Togo</p>
           </div>
           <button onClick={() => setShowForm(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
             + Nouveau dossier
           </button>
         </div>
 
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Total dossiers', value: stats.total, color: '#1a3c2e' },
+            { label: 'En attente', value: stats.en_attente, color: '#d97706' },
+            { label: 'Reçus', value: stats.recu, color: '#3b82f6' },
+            { label: 'Validés', value: stats.valide, color: '#2d6a4f' },
+          ].map((s, i) => (
+            <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <p className="text-xs text-gray-500 uppercase font-medium">{s.label}</p>
+              <p className="text-3xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Alerte urgences */}
+        {stats.urgents > 0 && (
+          <div className="mb-6 p-4 rounded-2xl border flex items-center gap-3"
+            style={{ background: '#fff8ed', borderColor: '#fcd34d' }}>
+            <div className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0"></div>
+            <p className="text-sm font-medium text-yellow-800">
+              {stats.urgents} dossier(s) avec échéance dans moins de 5 jours — Action requise
+            </p>
+          </div>
+        )}
+
+        {/* Formulaire */}
         {showForm && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-            <h2 className="font-semibold text-gray-800 mb-4">Nouveau dossier fiscal</h2>
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold" style={{ color: '#1a3c2e' }}>Nouveau dossier fiscal</h2>
+              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Client</label>
                 <select value={clientId} onChange={e => setClientId(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                   <option value="">Sélectionner un client</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.raison_sociale}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type d'impôt</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Type d'impôt</label>
                 <select value={typeImpot} onChange={e => setTypeImpot(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                   <option value="TVA">TVA</option>
                   <option value="IRPP">IRPP</option>
                   <option value="IS">Impôt sur les Sociétés</option>
@@ -223,31 +235,32 @@ export default function DossiersPage() {
               </div>
               {(typeImpot === 'TVA' || typeImpot === 'acompte') && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mois</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Mois</label>
                   <select value={periodeMois} onChange={e => setPeriodeMois(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {MOIS.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                    {MOIS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                   </select>
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Année</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Année</label>
                 <input type="number" value={periodeAnnee} onChange={e => setPeriodeAnnee(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date d'échéance</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Date d'échéance</label>
                 <input type="date" value={dateEcheance} onChange={e => setDateEcheance(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
             </div>
-            <div className="flex gap-3 mt-4">
+            <div className="flex gap-3 mt-5">
               <button onClick={ajouterDossier} disabled={saving}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+                className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
                 {saving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
               <button onClick={() => setShowForm(false)}
-                className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm">
+                className="px-6 py-2.5 rounded-xl text-sm border border-gray-200 text-gray-600">
                 Annuler
               </button>
             </div>
@@ -256,58 +269,69 @@ export default function DossiersPage() {
 
         {/* Panel dossier actif */}
         {dossierActif && (
-          <div className="bg-white rounded-xl border border-blue-200 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-800">
-                {dossierActif.clients.raison_sociale} — {dossierActif.type_impot} {dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] : ''} {dossierActif.periode_annee}
-              </h2>
-              <button onClick={() => { setDossierActif(null); setEmailContenu(''); setEmailEnvoye(false) }}
+          <div className="bg-white rounded-2xl shadow-lg border-l-4 p-6 mb-6" style={{ borderLeftColor: '#2d6a4f' }}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="font-bold text-gray-800">
+                  {dossierActif.clients.raison_sociale}
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {dossierActif.type_impot} — {dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] + ' ' : ''}{dossierActif.periode_annee} — Échéance : {new Date(dossierActif.date_echeance).toLocaleDateString('fr-FR')}
+                </p>
+              </div>
+              <button onClick={() => { setDossierActif(null); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
                 className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
               {/* Upload PDF */}
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Upload justificatif PDF</h3>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-  <input ref={fileRef} type="file" accept=".pdf" className="hidden" id="pdf-upload"
-    onChange={e => {
-      const f = e.target.files?.[0]
-      if (f) {
-        const label = document.getElementById('pdf-label')
-        if (label) label.textContent = `📄 ${f.name}`
-      }
-    }}
-  />
-  <label htmlFor="pdf-upload" className="cursor-pointer">
-    <div className="text-3xl mb-2">📄</div>
-    <p className="text-sm text-gray-500">Cliquez pour sélectionner un PDF</p>
-    <p id="pdf-label" className="text-sm text-blue-600 font-medium mt-1"></p>
-  </label>
-</div>
-                <button onClick={() => uploadPDF(dossierActif)} disabled={uploading}
-                  className="mt-3 w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-                  {uploading ? 'Upload en cours...' : 'Uploader le PDF'}
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Justificatif PDF</h3>
+                <label htmlFor="pdf-upload"
+                  className="block border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all hover:border-green-400"
+                  style={{ borderColor: fichierNom ? '#2d6a4f' : '#d1d5db', background: fichierNom ? '#f0f9f4' : 'white' }}>
+                  <input ref={fileRef} type="file" accept=".pdf" className="hidden" id="pdf-upload"
+                    onChange={e => setFichierNom(e.target.files?.[0]?.name || '')} />
+                  <div className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                    style={{ background: fichierNom ? '#2d6a4f' : '#f3f4f6' }}>
+                    <svg className="w-5 h-5" fill="none" stroke={fichierNom ? 'white' : '#9ca3af'} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  {fichierNom ? (
+                    <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>{fichierNom}</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500">Cliquez pour sélectionner</p>
+                      <p className="text-xs text-gray-400 mt-1">Format PDF uniquement</p>
+                    </>
+                  )}
+                </label>
+                <button onClick={() => uploadPDF(dossierActif)} disabled={uploading || !fichierNom}
+                  className="mt-3 w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-40 transition-all"
+                  style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                  {uploading ? 'Upload en cours...' : 'Uploader le document'}
                 </button>
               </div>
 
-              {/* Email de relance */}
+              {/* Email relance */}
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Email de relance IA</h3>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Email de relance IA</h3>
                 <button onClick={() => genererEmail(dossierActif)} disabled={generatingEmail}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50 mb-3">
-                  {generatingEmail ? 'Génération en cours...' : '✨ Générer email avec IA'}
+                  className="w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50 mb-3"
+                  style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+                  {generatingEmail ? 'Génération en cours...' : 'Générer avec l\'IA Groq'}
                 </button>
                 {emailContenu && (
                   <>
-                    <textarea
-                      value={emailContenu}
-                      onChange={e => setEmailContenu(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-32 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
+                    <textarea value={emailContenu} onChange={e => setEmailContenu(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm h-36 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
                     <button onClick={() => envoyerEmail(dossierActif)} disabled={sendingEmail || emailEnvoye}
-                      className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-                      {sendingEmail ? 'Envoi...' : emailEnvoye ? '✓ Email envoyé' : 'Envoyer au client'}
+                      className="mt-2 w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 transition-all"
+                      style={emailEnvoye
+                        ? { background: '#f0f9f4', color: '#2d6a4f', border: '1px solid #2d6a4f' }
+                        : { background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)', color: 'white' }}>
+                      {sendingEmail ? 'Envoi en cours...' : emailEnvoye ? 'Email envoyé avec succes' : 'Envoyer au client'}
                     </button>
                   </>
                 )}
@@ -316,48 +340,88 @@ export default function DossiersPage() {
           </div>
         )}
 
-        {/* Liste */}
+        {/* Filtres */}
+        <div className="flex gap-2 mb-4">
+          {[
+            { key: 'tous', label: 'Tous' },
+            { key: 'en_attente', label: 'En attente' },
+            { key: 'recu', label: 'Reçus' },
+            { key: 'valide', label: 'Validés' },
+            { key: 'televerse_otr', label: 'Téléversés OTR' },
+          ].map(f => (
+            <button key={f.key} onClick={() => setFiltreStatut(f.key)}
+              className="px-4 py-2 rounded-xl text-xs font-medium transition-all"
+              style={filtreStatut === f.key
+                ? { background: '#1a3c2e', color: 'white' }
+                : { background: 'white', color: '#6b7280', border: '1px solid #e5e7eb' }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Table */}
         {loading ? (
-          <div className="text-center py-12 text-gray-400">Chargement...</div>
-        ) : dossiers.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-            <p className="text-gray-400 text-sm">Aucun dossier pour l'instant</p>
+          <div className="text-center py-20 text-gray-400">Chargement...</div>
+        ) : dossiersFiltres.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
+            <p className="text-gray-400 text-sm">Aucun dossier pour ce filtre</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Client</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Période</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Échéance</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Statut</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Statut</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <thead>
+                <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                  {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Modifier', 'Actions'].map(h => (
+                    <th key={h} className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {dossiers.map(d => (
-                  <tr key={d.id} className={`hover:bg-gray-50 ${estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr' ? 'bg-red-50' : estUrgent(d.date_echeance) ? 'bg-yellow-50' : ''}`}>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{d.type_impot}</td>
+              <tbody>
+                {dossiersFiltres.map((d, i) => (
+                  <tr key={d.id}
+                    className="border-b border-gray-50 hover:bg-green-50 transition-colors"
+                    style={{
+                      background: estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
+                        ? '#fff8f8'
+                        : estUrgent(d.date_echeance) ? '#fffbeb'
+                        : i % 2 === 0 ? 'white' : '#fafffe'
+                    }}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                          style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                          {d.clients?.raison_sociale[0]}
+                        </div>
+                        <span className="text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs font-semibold px-2 py-1 rounded-lg"
+                        style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                        {d.type_impot}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {d.periode_mois ? `${MOIS[d.periode_mois - 1]} ` : ''}{d.periode_annee}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr' ? 'text-red-600 font-medium' : estUrgent(d.date_echeance) ? 'text-yellow-600 font-medium' : 'text-gray-500'}>
+                      <span className={
+                        estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
+                          ? 'text-red-600 font-semibold'
+                          : estUrgent(d.date_echeance) ? 'text-yellow-600 font-semibold'
+                          : 'text-gray-500'
+                      }>
                         {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-full ${STATUT_COULEURS[d.statut]}`}>
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>
                         {STATUT_LABELS[d.statut]}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
-                        className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none">
+                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none bg-white">
                         <option value="en_attente">En attente</option>
                         <option value="recu">Reçu</option>
                         <option value="valide">Validé</option>
@@ -365,8 +429,9 @@ export default function DossiersPage() {
                       </select>
                     </td>
                     <td className="px-6 py-4">
-                      <button onClick={() => { setDossierActif(d); setEmailContenu(''); setEmailEnvoye(false) }}
-                        className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 rounded-lg">
+                      <button onClick={() => { setDossierActif(d); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
+                        className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all"
+                        style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                         Gérer
                       </button>
                     </td>

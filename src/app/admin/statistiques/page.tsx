@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import Navbar from '@/components/Navbar'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 type Dossier = {
@@ -12,8 +13,6 @@ type Dossier = {
   clients: { raison_sociale: string }
   collaborateurs: { nom: string; prenom: string } | null
 }
-
-const COULEURS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 export default function StatistiquesPage() {
   const [dossiers, setDossiers] = useState<Dossier[]>([])
@@ -30,16 +29,16 @@ export default function StatistiquesPage() {
     setLoading(false)
   }
 
-  // Stat 1 : Conformité globale
   const total = dossiers.length
   const aJour = dossiers.filter(d => d.statut === 'televerse_otr' || d.statut === 'valide').length
   const enRetard = total - aJour
+  const tauxConformite = total > 0 ? Math.round((aJour / total) * 100) : 0
+
   const dataConformite = [
     { name: 'À jour', value: aJour },
-    { name: 'En retard / incomplet', value: enRetard },
+    { name: 'En retard', value: enRetard },
   ]
 
-  // Stat 2 : Par type d'impôt
   const types = ['TVA', 'IRPP', 'IS', 'acompte']
   const dataTypes = types.map(t => ({
     name: t,
@@ -49,7 +48,6 @@ export default function StatistiquesPage() {
     'Téléversé': dossiers.filter(d => d.type_impot === t && d.statut === 'televerse_otr').length,
   }))
 
-  // Stat 3 : Pièces manquantes par collaborateur
   const collab: Record<string, number> = {}
   dossiers.filter(d => d.statut === 'en_attente').forEach(d => {
     const nom = d.collaborateurs ? `${d.collaborateurs.prenom} ${d.collaborateurs.nom}` : 'Non assigné'
@@ -57,7 +55,6 @@ export default function StatistiquesPage() {
   })
   const dataCollab = Object.entries(collab).map(([nom, count]) => ({ nom, count }))
 
-  // Stat 4 : Alertes OTR (échéance dans 5 jours)
   const aujourd = new Date()
   const dans5 = new Date()
   dans5.setDate(dans5.getDate() + 5)
@@ -66,67 +63,81 @@ export default function StatistiquesPage() {
     return ech <= dans5 && d.statut !== 'televerse_otr'
   }).sort((a, b) => new Date(a.date_echeance).getTime() - new Date(b.date_echeance).getTime())
 
-  // Stat 5 : Taux de complétion par type
   const dataCompletion = types.map(t => {
-    const total = dossiers.filter(d => d.type_impot === t).length
+    const tot = dossiers.filter(d => d.type_impot === t).length
     const done = dossiers.filter(d => d.type_impot === t && (d.statut === 'valide' || d.statut === 'televerse_otr')).length
-    return { name: t, taux: total > 0 ? Math.round((done / total) * 100) : 0 }
+    return { name: t, taux: tot > 0 ? Math.round((done / tot) * 100) : 0 }
   })
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Chargement...</div>
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
+      <p className="text-gray-400">Chargement...</p>
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">F</span>
-          </div>
-          <span className="font-bold text-gray-800">FiscAl</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a href="/dashboard/clients" className="text-sm text-gray-500 hover:text-gray-800">Clients</a>
-          <a href="/dashboard/dossiers" className="text-sm text-gray-500 hover:text-gray-800">Dossiers</a>
-          <a href="/dashboard/assistant" className="text-sm text-gray-500 hover:text-gray-800">Assistant IA</a>
-          <a href="/admin/statistiques" className="text-sm font-medium text-blue-600">Statistiques</a>
-        </div>
-      </nav>
+    <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
+      <Navbar />
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">Tableau de bord — Direction</h1>
-          <p className="text-gray-500 text-sm mt-1">Vue d'ensemble de la conformité fiscale du cabinet</p>
+          <h1 className="text-3xl font-bold" style={{ color: '#1a3c2e' }}>Tableau de bord</h1>
+          <p className="text-gray-500 mt-1">Vue d'ensemble de la conformité fiscale — Experts Afrique Conseils</p>
         </div>
 
         {/* KPIs */}
         <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 uppercase font-medium">Total dossiers</p>
-            <p className="text-3xl font-bold text-gray-800 mt-1">{total}</p>
+          {[
+            { label: 'Total dossiers', value: total, color: '#1a3c2e', bg: '#f0f4f1' },
+            { label: 'Dossiers à jour', value: aJour, color: '#2d6a4f', bg: '#f0f9f4' },
+            { label: 'En retard', value: enRetard, color: '#dc2626', bg: '#fff8f8' },
+            { label: 'Alertes OTR', value: alertes.length, color: '#d97706', bg: '#fffbeb' },
+          ].map((kpi, i) => (
+            <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{kpi.label}</p>
+              <p className="text-4xl font-bold mt-2" style={{ color: kpi.color }}>{kpi.value}</p>
+              <div className="mt-3 w-full h-1.5 rounded-full" style={{ background: '#f3f4f6' }}>
+                <div className="h-1.5 rounded-full transition-all"
+                  style={{ width: `${total > 0 ? Math.round((kpi.value / total) * 100) : 0}%`, background: kpi.color }} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Taux de conformité global */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-gray-800">Taux de conformité global</h2>
+            <span className="text-3xl font-black" style={{ color: tauxConformite >= 70 ? '#2d6a4f' : '#dc2626' }}>
+              {tauxConformite}%
+            </span>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 uppercase font-medium">À jour</p>
-            <p className="text-3xl font-bold text-green-600 mt-1">{aJour}</p>
+          <div className="w-full h-4 rounded-full" style={{ background: '#f3f4f6' }}>
+            <div className="h-4 rounded-full transition-all duration-500"
+              style={{
+                width: `${tauxConformite}%`,
+                background: tauxConformite >= 70
+                  ? 'linear-gradient(90deg, #2d6a4f, #4ade80)'
+                  : 'linear-gradient(90deg, #dc2626, #f87171)'
+              }} />
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 uppercase font-medium">En retard</p>
-            <p className="text-3xl font-bold text-red-500 mt-1">{enRetard}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs text-gray-500 uppercase font-medium">Alertes OTR</p>
-            <p className="text-3xl font-bold text-yellow-500 mt-1">{alertes.length}</p>
+          <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <span>0%</span>
+            <span>Objectif : 100%</span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
-          {/* Stat 1 : Conformité globale */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-800 mb-4">Conformité globale du cabinet</h2>
+          {/* Conformité anneau */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="font-bold text-gray-800 mb-4">Conformité globale du cabinet</h2>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={dataConformite} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                  <Cell fill="#10b981" />
+                <Pie data={dataConformite} cx="50%" cy="50%" innerRadius={65} outerRadius={95}
+                  dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                  <Cell fill="#2d6a4f" />
                   <Cell fill="#ef4444" />
                 </Pie>
                 <Tooltip />
@@ -134,53 +145,61 @@ export default function StatistiquesPage() {
             </ResponsiveContainer>
           </div>
 
-          {/* Stat 2 : Par type d'impôt */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-800 mb-4">Avancement par type d'impôt</h2>
+          {/* Avancement par type */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="font-bold text-gray-800 mb-4">Avancement par type d'impôt</h2>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={dataTypes}>
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="En attente" fill="#f59e0b" />
-                <Bar dataKey="Validé" fill="#10b981" />
-                <Bar dataKey="Téléversé" fill="#3b82f6" />
+                <Bar dataKey="En attente" fill="#f59e0b" radius={[4,4,0,0]} />
+                <Bar dataKey="Validé" fill="#2d6a4f" radius={[4,4,0,0]} />
+                <Bar dataKey="Téléversé" fill="#1a3c2e" radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
-          {/* Stat 3 : Pièces manquantes par collaborateur */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-800 mb-4">Dossiers en attente par collaborateur</h2>
+          {/* Dossiers en attente par collaborateur */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="font-bold text-gray-800 mb-4">Dossiers en attente par collaborateur</h2>
             {dataCollab.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-8">Aucun dossier en attente</p>
+              <div className="flex items-center justify-center h-40">
+                <p className="text-gray-400 text-sm">Aucun dossier en attente</p>
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={dataCollab} layout="vertical">
-                  <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="nom" type="category" tick={{ fontSize: 12 }} width={100} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis dataKey="nom" type="category" tick={{ fontSize: 11 }} width={120} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#8b5cf6" name="Dossiers en attente" />
+                  <Bar dataKey="count" fill="#e8a317" name="Dossiers en attente" radius={[0,4,4,0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* Stat 5 : Taux de complétion */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-800 mb-4">Taux de complétion par impôt</h2>
-            <div className="space-y-4 mt-2">
+          {/* Taux de complétion */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="font-bold text-gray-800 mb-6">Taux de complétion par impôt</h2>
+            <div className="space-y-5">
               {dataCompletion.map(d => (
                 <div key={d.name}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">{d.name}</span>
-                    <span className="font-medium text-gray-800">{d.taux}%</span>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="font-medium text-gray-700">{d.name}</span>
+                    <span className="font-bold" style={{ color: d.taux >= 70 ? '#2d6a4f' : '#d97706' }}>{d.taux}%</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2">
-                    <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${d.taux}%` }}></div>
+                  <div className="w-full h-2.5 rounded-full" style={{ background: '#f3f4f6' }}>
+                    <div className="h-2.5 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${d.taux}%`,
+                        background: d.taux >= 70
+                          ? 'linear-gradient(90deg, #2d6a4f, #4ade80)'
+                          : 'linear-gradient(90deg, #e8a317, #fcd34d)'
+                      }} />
                   </div>
                 </div>
               ))}
@@ -188,37 +207,56 @@ export default function StatistiquesPage() {
           </div>
         </div>
 
-        {/* Stat 4 : Alertes OTR */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-800 mb-4">
-            Alertes OTR — Échéances critiques
-            {alertes.length > 0 && <span className="ml-2 bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full">{alertes.length} urgent(s)</span>}
-          </h2>
+        {/* Alertes OTR */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-bold text-gray-800">Alertes OTR — Échéances critiques</h2>
+            {alertes.length > 0 && (
+              <span className="text-xs px-3 py-1 rounded-full font-medium bg-red-100 text-red-600">
+                {alertes.length} urgent(s)
+              </span>
+            )}
+          </div>
           {alertes.length === 0 ? (
-            <p className="text-green-600 text-sm">✓ Aucune échéance critique dans les 5 prochains jours</p>
+            <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: '#f0f9f4' }}>
+              <div className="w-2 h-2 rounded-full" style={{ background: '#2d6a4f' }}></div>
+              <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>
+                Aucune échéance critique dans les 5 prochains jours
+              </p>
+            </div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left py-2 text-xs text-gray-500 uppercase">Client</th>
-                  <th className="text-left py-2 text-xs text-gray-500 uppercase">Type</th>
-                  <th className="text-left py-2 text-xs text-gray-500 uppercase">Échéance</th>
-                  <th className="text-left py-2 text-xs text-gray-500 uppercase">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {alertes.map(d => (
-                  <tr key={d.id} className="border-b border-gray-50">
-                    <td className="py-3 text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</td>
-                    <td className="py-3 text-sm text-gray-500">{d.type_impot}</td>
-                    <td className="py-3 text-sm text-red-600 font-medium">{new Date(d.date_echeance).toLocaleDateString('fr-FR')}</td>
-                    <td className="py-3">
-                      <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">{d.statut}</span>
-                    </td>
+            <div className="overflow-hidden rounded-xl border border-gray-100">
+              <table className="w-full">
+                <thead>
+                  <tr style={{ background: '#f8fafb' }}>
+                    {['Client', 'Type d\'impôt', 'Échéance', 'Statut'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {alertes.map((d, i) => (
+                    <tr key={d.id} className="border-t border-gray-50">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-semibold px-2 py-1 rounded-lg"
+                          style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                          {d.type_impot}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-red-600">
+                        {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">
+                          {d.statut}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
