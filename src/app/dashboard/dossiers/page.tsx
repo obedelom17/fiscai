@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
-import Navbar from '@/components/Navbar'
 import emailjs from '@emailjs/browser'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -102,7 +101,7 @@ export default function DossiersPage() {
     await supabase.from('documents').insert({
       dossier_id: dossier.id, nom_fichier: file.name, url_stockage: path, type_document: file.type
     })
-    await supabase.from('dossiers_fiscaux').update({ statut: 'recu' }).eq('id', dossier.id)
+    await supabase.from('dossiers_fiscaux').update({ statut: 'recu', date_depot: new Date().toISOString() }).eq('id', dossier.id)
     charger()
     if (fileRef.current) fileRef.current.value = ''
     setFichierNom('')
@@ -165,7 +164,7 @@ export default function DossiersPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
-      <Navbar />
+      
 
       <div className="max-w-7xl mx-auto px-6 py-8">
 

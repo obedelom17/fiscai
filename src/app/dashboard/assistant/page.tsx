@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
-import Navbar from '@/components/Navbar'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type Message = { role: 'user' | 'assistant'; content: string }
@@ -63,20 +62,15 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
   ]
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#f0f4f1' }}>
-      <Navbar />
+    <div className="h-screen flex flex-col" style={{ background: '#f0f4f1' }}>
 
-      <div className="max-w-4xl w-full mx-auto px-6 py-8 flex flex-col flex-1">
+      {/* Header fixe */}
+      <div className="px-8 py-6 border-b border-gray-200 bg-white flex-shrink-0">
+        <h1 className="text-2xl font-bold" style={{ color: '#1a3c2e' }}>Assistant IA</h1>
+        <p className="text-gray-500 text-sm mt-0.5">Interrogez vos données fiscales en langage naturel — Modèle Llama 3.1 via Groq</p>
+      </div>
 
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-6">
-          <h1 className="text-3xl font-bold" style={{ color: '#1a3c2e' }}>Assistant IA</h1>
-          <p className="text-gray-500 mt-1">Interrogez vos données fiscales en langage naturel — Modèle Llama 3.1 via Groq</p>
-        </motion.div>
+      <div className="flex-1 flex flex-col overflow-hidden px-8 py-6 gap-4">
 
         {/* Suggestions */}
         <AnimatePresence>
@@ -84,16 +78,15 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="grid grid-cols-2 gap-3 mb-6">
+              exit={{ opacity: 0, height: 0 }}
+              className="grid grid-cols-2 gap-3 flex-shrink-0">
               {suggestions.map((s, i) => (
                 <motion.button key={i}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.08 }}
                   onClick={() => setInput(s)}
-                  whileHover={{ y: -3, boxShadow: '0 8px 20px rgba(45,106,79,0.12)', borderColor: '#2d6a4f' }}
+                  whileHover={{ y: -2, boxShadow: '0 6px 20px rgba(45,106,79,0.12)', borderColor: '#2d6a4f' }}
                   whileTap={{ scale: 0.98 }}
                   className="text-left p-4 bg-white rounded-2xl border border-gray-100 shadow-sm text-sm text-gray-600 transition-all">
                   <div className="w-6 h-6 rounded-lg mb-2 flex items-center justify-center"
@@ -109,13 +102,8 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
           )}
         </AnimatePresence>
 
-        {/* Zone messages */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4 overflow-y-auto space-y-4"
-          style={{ minHeight: '350px', maxHeight: '450px' }}>
+        {/* Zone messages — prend tout l'espace restant */}
+        <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-y-auto space-y-4 min-h-0">
           <AnimatePresence initial={false}>
             {messages.map((msg, i) => (
               <motion.div key={i}
@@ -179,14 +167,14 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
             </motion.div>
           )}
           <div ref={bottomRef} />
-        </motion.div>
+        </div>
 
-        {/* Input */}
+        {/* Input fixe en bas */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 flex items-center gap-3">
+          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 flex items-center gap-3 flex-shrink-0">
           <input value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && envoyer()}
             placeholder="Ex: Quels clients ont des dossiers TVA en attente ?"

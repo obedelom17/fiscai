@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-import Navbar from '@/components/Navbar'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type Collaborateur = { id: string; nom: string; prenom: string; email: string; role: string }
@@ -46,7 +45,7 @@ export default function PortefeuillesPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
-      <Navbar />
+      
 
       <div className="max-w-7xl mx-auto px-6 py-8">
 

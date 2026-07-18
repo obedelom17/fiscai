@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
-import Navbar from '@/components/Navbar'
 import { motion } from 'framer-motion'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
@@ -11,22 +10,37 @@ type Dossier = {
   statut: string
   type_impot: string
   date_echeance: string
+  date_depot: string | null
   clients: { raison_sociale: string }
   collaborateurs: { nom: string; prenom: string } | null
 }
 
+type Relance = {
+  id: string
+  client_id: string
+  date_envoi: string
+  dossier_id: string
+  clients: { raison_sociale: string }
+}
+
 export default function StatistiquesPage() {
   const [dossiers, setDossiers] = useState<Dossier[]>([])
+  const [relances, setRelances] = useState<Relance[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    const { data } = await supabase
+    const { data: d } = await supabase
       .from('dossiers_fiscaux')
       .select('*, clients(raison_sociale), collaborateurs(nom, prenom)')
-    setDossiers(data || [])
+    const { data: r } = await supabase
+      .from('relances')
+      .select('*, clients(raison_sociale)')
+      .order('date_envoi', { ascending: true })
+    setDossiers(d || [])
+    setRelances(r || [])
     setLoading(false)
   }
 
@@ -70,8 +84,36 @@ export default function StatistiquesPage() {
     return { name: t, taux: tot > 0 ? Math.round((done / tot) * 100) : 0 }
   })
 
+  // Stat 4 : Indice de réactivité clients
+  const reactiviteParClient: Record<string, { total: number; count: number; nom: string }> = {}
+  relances.forEach(relance => {
+    const dossier = dossiers.find(d => d.id === relance.dossier_id)
+    if (dossier && dossier.date_depot) {
+      const dateRelance = new Date(relance.date_envoi)
+      const dateDepot = new Date(dossier.date_depot)
+      const delaiJours = Math.round((dateDepot.getTime() - dateRelance.getTime()) / (1000 * 60 * 60 * 24))
+      if (delaiJours >= 0) {
+        const clientNom = relance.clients?.raison_sociale || 'Inconnu'
+        if (!reactiviteParClient[relance.client_id]) {
+          reactiviteParClient[relance.client_id] = { total: 0, count: 0, nom: clientNom }
+        }
+        reactiviteParClient[relance.client_id].total += delaiJours
+        reactiviteParClient[relance.client_id].count += 1
+      }
+    }
+  })
+
+  const dataReactivite = Object.values(reactiviteParClient).map(c => ({
+    nom: c.nom,
+    delai: Math.round(c.total / c.count)
+  })).sort((a, b) => a.delai - b.delai)
+
+  const delaiMoyenGlobal = dataReactivite.length > 0
+    ? Math.round(dataReactivite.reduce((acc, c) => acc + c.delai, 0) / dataReactivite.length)
+    : null
+
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
+    <div className="h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
@@ -82,19 +124,14 @@ export default function StatistiquesPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
-      <Navbar />
+
+      {/* Header */}
+      <div className="px-8 py-6 border-b border-gray-200 bg-white">
+        <h1 className="text-2xl font-bold" style={{ color: '#1a3c2e' }}>Tableau de bord</h1>
+        <p className="text-gray-500 text-sm mt-0.5">Vue d'ensemble de la conformité fiscale — Experts Afrique Conseils</p>
+      </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-8">
-          <h1 className="text-3xl font-bold" style={{ color: '#1a3c2e' }}>Tableau de bord</h1>
-          <p className="text-gray-500 mt-1">Vue d'ensemble de la conformité fiscale — Experts Afrique Conseils</p>
-        </motion.div>
 
         {/* KPIs */}
         <div className="grid grid-cols-4 gap-4 mb-8">
@@ -259,11 +296,96 @@ export default function StatistiquesPage() {
           </motion.div>
         </div>
 
-        {/* Alertes OTR */}
+        {/* Stat 4 : Indice de réactivité */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
+          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="font-bold text-gray-800">Indice de réactivité des clients</h2>
+              <p className="text-gray-400 text-xs mt-0.5">Délai moyen entre relance et réception du document</p>
+            </div>
+            {delaiMoyenGlobal !== null && (
+              <div className="text-right">
+                <p className="text-3xl font-black"
+                  style={{ color: delaiMoyenGlobal <= 3 ? '#2d6a4f' : delaiMoyenGlobal <= 7 ? '#d97706' : '#dc2626' }}>
+                  {delaiMoyenGlobal}j
+                </p>
+                <p className="text-xs text-gray-400">délai moyen global</p>
+              </div>
+            )}
+          </div>
+
+          {dataReactivite.length === 0 ? (
+            <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: '#f0f9f4' }}>
+              <div className="w-2 h-2 rounded-full" style={{ background: '#2d6a4f' }} />
+              <p className="text-sm text-gray-500">
+                Aucune donnée disponible — les délais s'afficheront après envoi de relances et réception de documents
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {dataReactivite.map((c, i) => (
+                <motion.div key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  className="flex items-center gap-4 p-3 rounded-xl"
+                  style={{ background: '#f8fafb' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                    {c.nom[0]}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">{c.nom}</p>
+                    <div className="w-full h-2 rounded-full mt-1" style={{ background: '#f3f4f6' }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min((c.delai / 14) * 100, 100)}%` }}
+                        transition={{ duration: 0.6, delay: i * 0.08 }}
+                        className="h-2 rounded-full"
+                        style={{
+                          background: c.delai <= 3
+                            ? 'linear-gradient(90deg, #2d6a4f, #4ade80)'
+                            : c.delai <= 7
+                            ? 'linear-gradient(90deg, #e8a317, #fcd34d)'
+                            : 'linear-gradient(90deg, #dc2626, #f87171)'
+                        }} />
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-sm font-bold"
+                      style={{ color: c.delai <= 3 ? '#2d6a4f' : c.delai <= 7 ? '#d97706' : '#dc2626' }}>
+                      {c.delai} jour{c.delai > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* Légende */}
+          <div className="flex gap-4 mt-4 pt-4 border-t border-gray-100">
+            {[
+              { color: '#2d6a4f', label: 'Réactif (≤ 3 jours)' },
+              { color: '#d97706', label: 'Moyen (4-7 jours)' },
+              { color: '#dc2626', label: 'Lent (> 7 jours)' },
+            ].map((l, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ background: l.color }} />
+                <span className="text-xs text-gray-500">{l.label}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Alertes OTR */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
           className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-bold text-gray-800">Alertes OTR — Échéances critiques</h2>
@@ -277,16 +399,12 @@ export default function StatistiquesPage() {
             )}
           </div>
           {alertes.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-3 p-4 rounded-xl"
-              style={{ background: '#f0f9f4' }}>
+            <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: '#f0f9f4' }}>
               <div className="w-2 h-2 rounded-full" style={{ background: '#2d6a4f' }} />
               <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>
                 Aucune échéance critique dans les 5 prochains jours
               </p>
-            </motion.div>
+            </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-gray-100">
               <table className="w-full">
