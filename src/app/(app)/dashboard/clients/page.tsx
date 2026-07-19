@@ -164,11 +164,12 @@ export default function ClientsPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Régime fiscal</label>
                   <select value={regime_fiscal} onChange={e => setRegime(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="RSI">RSI — Réel Simplifié d'Imposition</option>
-                    <option value="RNI">RNI — Réel Normal d'Imposition</option>
-                    <option value="forfait">Forfait</option>
-                  </select>
+  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+  <option value="RR_TVA">Régime Réel avec TVA</option>
+  <option value="RR_STVA">Régime Réel sans TVA</option>
+  <option value="TPU_F">Taxe Professionnelle Unique Forfaitaire</option>
+  <option value="TPU_D">Taxe Professionnelle Unique Déclarative</option>
+</select>
                 </div>
               </div>
               <div className="flex gap-3 mt-5">
