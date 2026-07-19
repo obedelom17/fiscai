@@ -1,5 +1,6 @@
 'use client'
 
+import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -46,18 +47,14 @@ export default function PortefeuillesPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
       
-
+     <PageHeader
+  titre="Gestion des Portefeuilles"
+  sousTitre="Attribution des clients aux collaborateurs du cabinet"
+  imageUrl="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&q=80"
+/>
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-8">
-          <h1 className="text-3xl font-bold" style={{ color: '#1a3c2e' }}>Gestion des Portefeuilles</h1>
-          <p className="text-gray-500 mt-1">Attribution des clients aux collaborateurs du cabinet</p>
-        </motion.div>
+       
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">

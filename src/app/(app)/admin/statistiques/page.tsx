@@ -1,5 +1,6 @@
 'use client'
 
+import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
@@ -125,11 +126,11 @@ export default function StatistiquesPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
 
-      {/* Header */}
-      <div className="px-8 py-6 border-b border-gray-200 bg-white">
-        <h1 className="text-2xl font-bold" style={{ color: '#1a3c2e' }}>Tableau de bord</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Vue d'ensemble de la conformité fiscale — Experts Afrique Conseils</p>
-      </div>
+      <PageHeader
+  titre="Tableau de bord"
+  sousTitre="Vue d'ensemble de la conformité fiscale — Experts Afrique Conseils"
+  imageUrl="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80"
+/>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
 

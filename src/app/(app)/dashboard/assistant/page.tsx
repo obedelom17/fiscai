@@ -1,5 +1,6 @@
 'use client'
 
+import PageHeader from '@/components/PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -64,11 +65,11 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
   return (
     <div className="h-screen flex flex-col" style={{ background: '#f0f4f1' }}>
 
-      {/* Header fixe */}
-      <div className="px-8 py-6 border-b border-gray-200 bg-white flex-shrink-0">
-        <h1 className="text-2xl font-bold" style={{ color: '#1a3c2e' }}>Assistant IA</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Interrogez vos données fiscales en langage naturel — Modèle Llama 3.1 via Groq</p>
-      </div>
+      <PageHeader
+  titre="Assistant IA"
+  sousTitre="Interrogez vos données fiscales en langage naturel — Modèle Llama 3.1 via Groq"
+  imageUrl="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80"
+/>
 
       <div className="flex-1 flex flex-col overflow-hidden px-8 py-6 gap-4">
 

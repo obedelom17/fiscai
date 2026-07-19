@@ -1,8 +1,10 @@
 'use client'
 
+import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
+
 
 export default function ParametresPage() {
   const [prenom, setPrenom] = useState('')
@@ -87,11 +89,11 @@ export default function ParametresPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
 
-      {/* Header */}
-      <div className="px-8 py-6 border-b border-gray-200 bg-white">
-        <h1 className="text-2xl font-bold" style={{ color: '#1a3c2e' }}>Paramètres</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Gérez votre profil et vos informations de connexion</p>
-      </div>
+      <PageHeader
+  titre="Paramètres"
+  sousTitre="Gérez votre profil et vos informations de connexion"
+  imageUrl="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80"
+/>
 
       <div className="max-w-2xl mx-auto px-8 py-8 space-y-6">
 

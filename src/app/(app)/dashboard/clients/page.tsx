@@ -1,5 +1,6 @@
 'use client'
 
+import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -67,25 +68,25 @@ export default function ClientsPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
       
+       <PageHeader
+  titre="Portefeuille Clients"
+  sousTitre={`${clients.length} entreprise(s) enregistrée(s)`}
+  imageUrl="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=80"
+  bouton={
+    <motion.button onClick={() => setShowForm(true)}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg"
+      style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+      + Nouveau client
+    </motion.button>
+  }
+/>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Header */}
-        <motion.div {...fadeUp} transition={{ duration: 0.4 }}
-          className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold" style={{ color: '#1a3c2e' }}>Portefeuille Clients</h1>
-            <p className="text-gray-500 mt-1">{clients.length} entreprise(s) enregistrée(s)</p>
-          </div>
-          <motion.button
-            onClick={() => setShowForm(true)}
-            whileHover={{ scale: 1.03, boxShadow: '0 8px 25px rgba(45,106,79,0.4)' }}
-            whileTap={{ scale: 0.97 }}
-            className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-            + Nouveau client
-          </motion.button>
-        </motion.div>
+       
+
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">

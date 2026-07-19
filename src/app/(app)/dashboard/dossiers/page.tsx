@@ -1,5 +1,6 @@
 'use client'
 
+import PageHeader from '@/components/PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import emailjs from '@emailjs/browser'
@@ -165,27 +166,24 @@ export default function DossiersPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
       
+      <PageHeader
+  titre="Dossiers Fiscaux"
+  sousTitre="Suivi des obligations fiscales — OTR Togo"
+  imageUrl="https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=1200&q=80"
+  bouton={
+    <motion.button onClick={() => setShowForm(true)}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg"
+      style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+      + Nouveau dossier
+    </motion.button>
+  }
+/>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold" style={{ color: '#1a3c2e' }}>Dossiers Fiscaux</h1>
-            <p className="text-gray-500 mt-1">Suivi des obligations fiscales — OTR Togo</p>
-          </div>
-          <motion.button onClick={() => setShowForm(true)}
-            whileHover={{ scale: 1.03, boxShadow: '0 8px 25px rgba(45,106,79,0.4)' }}
-            whileTap={{ scale: 0.97 }}
-            className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-            + Nouveau dossier
-          </motion.button>
-        </motion.div>
+       
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
