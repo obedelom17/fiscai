@@ -40,10 +40,17 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #0f2318 0%, #1a3c2e 50%, #2d6a4f 100%)' }}>
+    <div className="min-h-screen flex" style={{ 
+  backgroundImage: 'url(https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=80)',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center'
+}}>
+
+  <div className="absolute inset-0" 
+  style={{ background: 'linear-gradient(135deg, rgba(10,31,18,0.90) 0%, rgba(26,60,46,0.80) 60%, rgba(45,106,79,0.70) 100%)' }} />
 
       {/* Panneau gauche */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 p-12">
+      <div className="hidden lg:flex flex-col justify-between w-1/2 p-12 relative">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
@@ -81,7 +88,7 @@ export default function AuthPage() {
       </div>
 
       {/* Panneau droit */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8 relative z-10">
         <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
 
           <div className="text-center mb-8">
