@@ -34,7 +34,7 @@ export default function AuthPage() {
         id: data.user.id, nom, prenom, email, role: 'collaborateur'
       })
       if (insertError) { setErreur('Erreur création profil: ' + insertError.message); setLoading(false); return }
-      router.push('/dashboard/clients')
+      router.push('/dashboard')
     }
     setLoading(false)
   }
