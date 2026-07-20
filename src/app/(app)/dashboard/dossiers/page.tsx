@@ -1,8 +1,8 @@
 'use client'
 
-import PageHeader from '@/components/PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
+import PageHeader from '@/components/PageHeader'
 import emailjs from '@emailjs/browser'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -40,12 +40,15 @@ export default function DossiersPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [dossierEnEdition, setDossierEnEdition] = useState<Dossier | null>(null)
+  const [dossierASupprimer, setDossierASupprimer] = useState<Dossier | null>(null)
   const [clientId, setClientId] = useState('')
   const [typeImpot, setTypeImpot] = useState('TVA')
   const [periodeMois, setPeriodeMois] = useState(1)
   const [periodeAnnee, setPeriodeAnnee] = useState(2026)
   const [dateEcheance, setDateEcheance] = useState('')
   const [saving, setSaving] = useState(false)
+  const [supprimant, setSupprimant] = useState(false)
   const [dossierActif, setDossierActif] = useState<Dossier | null>(null)
   const [uploading, setUploading] = useState(false)
   const [generatingEmail, setGeneratingEmail] = useState(false)
@@ -70,21 +73,49 @@ export default function DossiersPage() {
     setLoading(false)
   }
 
-  async function ajouterDossier() {
+  function ouvrirFormulaire(dossier?: Dossier) {
+    if (dossier) {
+      setDossierEnEdition(dossier)
+      setClientId(dossier.client_id)
+      setTypeImpot(dossier.type_impot)
+      setPeriodeMois(dossier.periode_mois || 1)
+      setPeriodeAnnee(dossier.periode_annee)
+      setDateEcheance(dossier.date_echeance.split('T')[0])
+    } else {
+      setDossierEnEdition(null)
+      setClientId(''); setTypeImpot('TVA'); setPeriodeMois(1); setPeriodeAnnee(2026); setDateEcheance('')
+    }
+    setShowForm(true)
+  }
+
+  async function sauvegarderDossier() {
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('dossiers_fiscaux').insert({
+    const payload = {
       client_id: clientId,
       type_impot: typeImpot,
       periode_mois: typeImpot === 'TVA' || typeImpot === 'acompte' ? periodeMois : null,
       periode_annee: periodeAnnee,
-      statut: 'en_attente',
       date_echeance: dateEcheance,
-      collaborateur_id: user?.id
-    })
+    }
+    if (dossierEnEdition) {
+      await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('dossiers_fiscaux').insert({ ...payload, statut: 'en_attente', collaborateur_id: user?.id })
+    }
     setShowForm(false)
+    setDossierEnEdition(null)
     charger()
     setSaving(false)
+  }
+
+  async function supprimerDossier() {
+    if (!dossierASupprimer) return
+    setSupprimant(true)
+    await supabase.from('dossiers_fiscaux').delete().eq('id', dossierASupprimer.id)
+    setDossierASupprimer(null)
+    charger()
+    setSupprimant(false)
   }
 
   async function changerStatut(id: string, statut: string) {
@@ -164,26 +195,22 @@ export default function DossiersPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
-      
+    <div style={{ background: '#f0f4f1' }}>
       <PageHeader
-  titre="Dossiers Fiscaux"
-  sousTitre="Suivi des obligations fiscales — OTR Togo"
-  imageUrl="https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=1200&q=80"
-  bouton={
-    <motion.button onClick={() => setShowForm(true)}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg"
-      style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
-      + Nouveau dossier
-    </motion.button>
-  }
-/>
+        titre="Dossiers Fiscaux"
+        sousTitre="Suivi des obligations fiscales — OTR Togo"
+        imageUrl="https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=1200&q=80"
+        bouton={
+          <motion.button onClick={() => ouvrirFormulaire()}
+            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            className="px-5 py-2.5 rounded-xl text-white font-medium shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+            + Nouveau dossier
+          </motion.button>
+        }
+      />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-
-       
+      <div className="px-8 py-8">
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
@@ -214,9 +241,7 @@ export default function DossiersPage() {
               exit={{ opacity: 0, height: 0 }}
               className="mb-6 p-4 rounded-2xl border flex items-center gap-3"
               style={{ background: '#fff8ed', borderColor: '#fcd34d' }}>
-              <motion.div
-                animate={{ scale: [1, 1.3, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
+              <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
                 className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0" />
               <p className="text-sm font-medium text-yellow-800">
                 {stats.urgents} dossier(s) avec échéance dans moins de 5 jours — Action requise
@@ -225,7 +250,7 @@ export default function DossiersPage() {
           )}
         </AnimatePresence>
 
-        {/* Formulaire */}
+        {/* Formulaire ajout/édition */}
         <AnimatePresence>
           {showForm && (
             <motion.div
@@ -235,9 +260,12 @@ export default function DossiersPage() {
               transition={{ duration: 0.3 }}
               className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-bold" style={{ color: '#1a3c2e' }}>Nouveau dossier fiscal</h2>
+                <h2 className="text-lg font-bold" style={{ color: '#1a3c2e' }}>
+                  {dossierEnEdition ? 'Modifier le dossier' : 'Nouveau dossier fiscal'}
+                </h2>
                 <motion.button whileHover={{ rotate: 90 }} transition={{ duration: 0.2 }}
-                  onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</motion.button>
+                  onClick={() => { setShowForm(false); setDossierEnEdition(null) }}
+                  className="text-gray-400 hover:text-gray-600 text-xl">✕</motion.button>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -279,18 +307,53 @@ export default function DossiersPage() {
                 </div>
               </div>
               <div className="flex gap-3 mt-5">
-                <motion.button onClick={ajouterDossier} disabled={saving}
+                <motion.button onClick={sauvegarderDossier} disabled={saving}
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                  {saving ? 'Enregistrement...' : 'Enregistrer'}
+                  {saving ? 'Enregistrement...' : dossierEnEdition ? 'Modifier' : 'Enregistrer'}
                 </motion.button>
-                <motion.button onClick={() => setShowForm(false)}
+                <motion.button onClick={() => { setShowForm(false); setDossierEnEdition(null) }}
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   className="px-6 py-2.5 rounded-xl text-sm border border-gray-200 text-gray-600">
                   Annuler
                 </motion.button>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Modal confirmation suppression */}
+        <AnimatePresence>
+          {dossierASupprimer && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center"
+              style={{ background: 'rgba(0,0,0,0.5)' }}>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Supprimer ce dossier ?</h3>
+                <p className="text-gray-500 text-sm mb-6">
+                  Le dossier <strong>{dossierASupprimer.type_impot}</strong> de <strong>{dossierASupprimer.clients?.raison_sociale}</strong> sera supprimé définitivement.
+                </p>
+                <div className="flex gap-3">
+                  <motion.button onClick={supprimerDossier} disabled={supprimant}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium bg-red-600 disabled:opacity-50">
+                    {supprimant ? 'Suppression...' : 'Supprimer'}
+                  </motion.button>
+                  <motion.button onClick={() => setDossierASupprimer(null)}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="flex-1 py-2.5 rounded-xl text-sm border border-gray-200 text-gray-600">
+                    Annuler
+                  </motion.button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -318,7 +381,6 @@ export default function DossiersPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-6">
-                {/* Upload PDF */}
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Justificatif PDF</h3>
                   <motion.label htmlFor="pdf-upload"
@@ -327,8 +389,7 @@ export default function DossiersPage() {
                     style={{ borderColor: fichierNom ? '#2d6a4f' : '#d1d5db', background: fichierNom ? '#f0f9f4' : 'white' }}>
                     <input ref={fileRef} type="file" accept=".pdf" className="hidden" id="pdf-upload"
                       onChange={e => setFichierNom(e.target.files?.[0]?.name || '')} />
-                    <motion.div
-                      animate={{ scale: fichierNom ? 1.1 : 1 }}
+                    <motion.div animate={{ scale: fichierNom ? 1.1 : 1 }}
                       className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
                       style={{ background: fichierNom ? '#2d6a4f' : '#f3f4f6' }}>
                       <svg className="w-5 h-5" fill="none" stroke={fichierNom ? 'white' : '#9ca3af'} viewBox="0 0 24 24">
@@ -352,7 +413,6 @@ export default function DossiersPage() {
                   </motion.button>
                 </div>
 
-                {/* Email relance */}
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Email de relance IA</h3>
                   <motion.button onClick={() => genererEmail(dossierActif)} disabled={generatingEmail}
@@ -416,9 +476,7 @@ export default function DossiersPage() {
         {/* Table */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               className="w-8 h-8 rounded-full border-2"
               style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
           </div>
@@ -491,13 +549,28 @@ export default function DossiersPage() {
                         </select>
                       </td>
                       <td className="px-6 py-4">
-                        <motion.button
-                          onClick={() => { setDossierActif(d); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
-                          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                          className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                          style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
-                          Gérer
-                        </motion.button>
+                        <div className="flex items-center gap-2">
+                          <motion.button
+                            onClick={() => { setDossierActif(d); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                            style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                            Gérer
+                          </motion.button>
+                          <motion.button
+                            onClick={() => ouvrirFormulaire(d)}
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                            style={{ background: '#eff6ff', color: '#3b82f6' }}>
+                            Modifier
+                          </motion.button>
+                          <motion.button
+                            onClick={() => setDossierASupprimer(d)}
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-600">
+                            Supprimer
+                          </motion.button>
+                        </div>
                       </td>
                     </motion.tr>
                   ))}
