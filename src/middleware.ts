@@ -40,10 +40,17 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/dashboard/clients'
     return NextResponse.redirect(url)
   }
+  if (user && request.nextUrl.pathname.startsWith('/auth')) {
+  const url = request.nextUrl.clone()
+  url.pathname = '/dashboard'
+  return NextResponse.redirect(url)
+}
 
   return supabaseResponse
 }
 
+
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
+

@@ -108,7 +108,7 @@ export default function ParametresPage() {
         imageUrl="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80"
       />
 
-      <div className="max-w-2xl mx-auto px-8 py-8 space-y-6">
+      <div className="px-8 py-8 space-y-6">
 
         {/* Photo de profil */}
         <motion.div
