@@ -30,8 +30,11 @@ export default function AuthPage() {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) { setErreur(error.message); setLoading(false); return }
     if (data.user) {
+      // Premier inscrit → admin, les suivants → collaborateur
+      const { count } = await supabase.from('collaborateurs').select('*', { count: 'exact', head: true })
+      const role = (count === 0 || count === null) ? 'admin' : 'collaborateur'
       const { error: insertError } = await supabase.from('collaborateurs').insert({
-        id: data.user.id, nom, prenom, email, role: 'collaborateur'
+        id: data.user.id, nom, prenom, email, role
       })
       if (insertError) { setErreur('Erreur création profil: ' + insertError.message); setLoading(false); return }
       router.push('/dashboard')
