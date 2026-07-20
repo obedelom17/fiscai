@@ -67,7 +67,7 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
 
       <PageHeader
   titre="Assistant IA"
-  sousTitre="Interrogez vos données fiscales en langage naturel — Modèle Llama 3.1 via Groq"
+  sousTitre="Interrogez vos données fiscales en langage naturel"
   imageUrl="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80"
 />
 

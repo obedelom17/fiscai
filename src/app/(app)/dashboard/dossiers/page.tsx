@@ -18,6 +18,14 @@ type Dossier = {
   clients: { raison_sociale: string; email_contact: string }
   collaborateurs: { nom: string; prenom: string } | null
 }
+type Relance = {
+  id: string
+  contenu_email: string
+  date_envoi: string
+  statut: string
+  clients: { raison_sociale: string }
+  dossiers_fiscaux: { type_impot: string; periode_mois: number | null; periode_annee: number }
+}
 
 const STATUT_COULEURS: Record<string, string> = {
   en_attente: 'bg-yellow-100 text-yellow-700',
@@ -38,7 +46,9 @@ const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov
 export default function DossiersPage() {
   const [dossiers, setDossiers] = useState<Dossier[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [relances, setRelances] = useState<Relance[]>([])
   const [loading, setLoading] = useState(true)
+  const [onglet, setOnglet] = useState<'dossiers' | 'historique'>('dossiers')
   const [showForm, setShowForm] = useState(false)
   const [dossierEnEdition, setDossierEnEdition] = useState<Dossier | null>(null)
   const [dossierASupprimer, setDossierASupprimer] = useState<Dossier | null>(null)
@@ -68,8 +78,13 @@ export default function DossiersPage() {
       .select('*, clients(raison_sociale, email_contact), collaborateurs(nom, prenom)')
       .order('date_echeance', { ascending: true })
     const { data: c } = await supabase.from('clients').select('id, raison_sociale, email_contact')
+    const { data: r } = await supabase
+      .from('relances')
+      .select('*, clients(raison_sociale), dossiers_fiscaux(type_impot, periode_mois, periode_annee)')
+      .order('date_envoi', { ascending: false })
     setDossiers(d || [])
     setClients(c || [])
+    setRelances(r || [])
     setLoading(false)
   }
 
@@ -250,7 +265,7 @@ export default function DossiersPage() {
           )}
         </AnimatePresence>
 
-        {/* Formulaire ajout/édition */}
+        {/* Formulaire */}
         <AnimatePresence>
           {showForm && (
             <motion.div
@@ -323,7 +338,7 @@ export default function DossiersPage() {
           )}
         </AnimatePresence>
 
-        {/* Modal confirmation suppression */}
+        {/* Modal suppression */}
         <AnimatePresence>
           {dossierASupprimer && (
             <motion.div
@@ -453,132 +468,215 @@ export default function DossiersPage() {
           )}
         </AnimatePresence>
 
-        {/* Filtres */}
-        <div className="flex gap-2 mb-4 flex-wrap">
+        {/* Onglets */}
+        <div className="flex gap-2 mb-6">
           {[
-            { key: 'tous', label: 'Tous' },
-            { key: 'en_attente', label: 'En attente' },
-            { key: 'recu', label: 'Reçus' },
-            { key: 'valide', label: 'Validés' },
-            { key: 'televerse_otr', label: 'Téléversés OTR' },
-          ].map(f => (
-            <motion.button key={f.key} onClick={() => setFiltreStatut(f.key)}
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="px-4 py-2 rounded-xl text-xs font-medium transition-all"
-              style={filtreStatut === f.key
-                ? { background: '#1a3c2e', color: 'white' }
+            { key: 'dossiers', label: 'Dossiers fiscaux' },
+            { key: 'historique', label: `Historique des relances (${relances.length})` },
+          ].map(o => (
+            <motion.button key={o.key} onClick={() => setOnglet(o.key as any)}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              className="px-5 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={onglet === o.key
+                ? { background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)', color: 'white' }
                 : { background: 'white', color: '#6b7280', border: '1px solid #e5e7eb' }}>
-              {f.label}
+              {o.label}
             </motion.button>
           ))}
         </div>
 
-        {/* Table */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              className="w-8 h-8 rounded-full border-2"
-              style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-          </div>
-        ) : dossiersFiltres.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-            <p className="text-gray-400 text-sm">Aucun dossier pour ce filtre</p>
-          </motion.div>
-        ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-                  {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Modifier', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence>
-                  {dossiersFiltres.map((d, i) => (
-                    <motion.tr key={d.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: i * 0.04 }}
-                      className="border-b border-gray-50 hover:bg-green-50 transition-colors"
-                      style={{
-                        background: estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
-                          ? '#fff8f8' : estUrgent(d.date_echeance) ? '#fffbeb'
-                          : i % 2 === 0 ? 'white' : '#fafffe'
-                      }}>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                            {d.clients?.raison_sociale[0]}
+        {/* Filtres + Table dossiers */}
+        {onglet === 'dossiers' && (
+          <>
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {[
+                { key: 'tous', label: 'Tous' },
+                { key: 'en_attente', label: 'En attente' },
+                { key: 'recu', label: 'Reçus' },
+                { key: 'valide', label: 'Validés' },
+                { key: 'televerse_otr', label: 'Téléversés OTR' },
+              ].map(f => (
+                <motion.button key={f.key} onClick={() => setFiltreStatut(f.key)}
+                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  className="px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                  style={filtreStatut === f.key
+                    ? { background: '#1a3c2e', color: 'white' }
+                    : { background: 'white', color: '#6b7280', border: '1px solid #e5e7eb' }}>
+                  {f.label}
+                </motion.button>
+              ))}
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  className="w-8 h-8 rounded-full border-2"
+                  style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
+              </div>
+            ) : dossiersFiltres.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="text-center py-20 bg-white rounded-2xl border border-gray-100">
+                <p className="text-gray-400 text-sm">Aucun dossier pour ce filtre</p>
+              </motion.div>
+            ) : (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                      {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Modifier', 'Actions'].map(h => (
+                        <th key={h} className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <AnimatePresence>
+                      {dossiersFiltres.map((d, i) => (
+                        <motion.tr key={d.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: i * 0.04 }}
+                          className="border-b border-gray-50 hover:bg-green-50 transition-colors"
+                          style={{
+                            background: estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
+                              ? '#fff8f8' : estUrgent(d.date_echeance) ? '#fffbeb'
+                              : i % 2 === 0 ? 'white' : '#fafffe'
+                          }}>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                                {d.clients?.raison_sociale[0]}
+                              </div>
+                              <span className="text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-xs font-semibold px-2 py-1 rounded-lg"
+                              style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                              {d.type_impot}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {d.periode_mois ? `${MOIS[d.periode_mois - 1]} ` : ''}{d.periode_annee}
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className={estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
+                              ? 'text-red-600 font-semibold' : estUrgent(d.date_echeance)
+                              ? 'text-yellow-600 font-semibold' : 'text-gray-500'}>
+                              {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>
+                              {STATUT_LABELS[d.statut]}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
+                              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none bg-white">
+                              <option value="en_attente">En attente</option>
+                              <option value="recu">Reçu</option>
+                              <option value="valide">Validé</option>
+                              <option value="televerse_otr">Téléversé OTR</option>
+                            </select>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <motion.button
+                                onClick={() => { setDossierActif(d); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                                style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                                Gérer
+                              </motion.button>
+                              <motion.button
+                                onClick={() => ouvrirFormulaire(d)}
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                                style={{ background: '#eff6ff', color: '#3b82f6' }}>
+                                Modifier
+                              </motion.button>
+                              <motion.button
+                                onClick={() => setDossierASupprimer(d)}
+                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-600">
+                                Supprimer
+                              </motion.button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        {/* Historique relances */}
+        {onglet === 'historique' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            {relances.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
+                <p className="text-gray-400 text-sm">Aucune relance envoyée pour l'instant</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                      {['Client', 'Dossier', 'Date envoi', 'Statut', 'Aperçu email'].map(h => (
+                        <th key={h} className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {relances.map((r, i) => (
+                      <motion.tr key={r.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                        className="border-b border-gray-50 hover:bg-green-50 transition-colors"
+                        style={{ background: i % 2 === 0 ? 'white' : '#fafffe' }}>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                              style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                              {r.clients?.raison_sociale?.[0]}
+                            </div>
+                            <span className="text-sm font-medium text-gray-800">{r.clients?.raison_sociale}</span>
                           </div>
-                          <span className="text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs font-semibold px-2 py-1 rounded-lg"
-                          style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
-                          {d.type_impot}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {d.periode_mois ? `${MOIS[d.periode_mois - 1]} ` : ''}{d.periode_annee}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr'
-                          ? 'text-red-600 font-semibold' : estUrgent(d.date_echeance)
-                          ? 'text-yellow-600 font-semibold' : 'text-gray-500'}>
-                          {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`text-xs px-3 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>
-                          {STATUT_LABELS[d.statut]}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
-                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none bg-white">
-                          <option value="en_attente">En attente</option>
-                          <option value="recu">Reçu</option>
-                          <option value="valide">Validé</option>
-                          <option value="televerse_otr">Téléversé OTR</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <motion.button
-                            onClick={() => { setDossierActif(d); setEmailContenu(''); setEmailEnvoye(false); setFichierNom('') }}
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-xs font-semibold px-2 py-1 rounded-lg"
                             style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
-                            Gérer
-                          </motion.button>
-                          <motion.button
-                            onClick={() => ouvrirFormulaire(d)}
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            className="text-xs px-3 py-1.5 rounded-lg font-medium"
-                            style={{ background: '#eff6ff', color: '#3b82f6' }}>
-                            Modifier
-                          </motion.button>
-                          <motion.button
-                            onClick={() => setDossierASupprimer(d)}
-                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                            className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-600">
-                            Supprimer
-                          </motion.button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </tbody>
-            </table>
+                            {r.dossiers_fiscaux?.type_impot}
+                            {r.dossiers_fiscaux?.periode_mois ? ` — ${MOIS[r.dossiers_fiscaux.periode_mois - 1]}` : ''}
+                            {` ${r.dossiers_fiscaux?.periode_annee}`}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {new Date(r.date_envoi).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-xs px-3 py-1 rounded-full font-medium bg-green-100 text-green-700">
+                            {r.statut}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-400 max-w-xs">
+                          <p className="truncate">{r.contenu_email?.substring(0, 60)}...</p>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </motion.div>
         )}
+
       </div>
     </div>
   )
