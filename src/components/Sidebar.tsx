@@ -12,13 +12,13 @@ export default function Sidebar() {
   const router = useRouter()
   const supabase = createClient()
   const { isAdmin, loading } = useRole()
-  const [user, setUser] = useState<{ prenom: string; nom: string; email: string } | null>(null)
+  const [user, setUser] = useState<{ prenom: string; nom: string; email: string; avatar_url: string | null } | null>(null)
 
   useEffect(() => {
     async function charger() {
       const { data: { user: u } } = await supabase.auth.getUser()
       if (!u) return
-      const { data } = await supabase.from('collaborateurs').select('prenom, nom, email').eq('id', u.id).single()
+      const { data } = await supabase.from('collaborateurs').select('prenom, nom, email, avatar_url').eq('id', u.id).single()
       setUser(data)
     }
     charger()
@@ -121,18 +121,23 @@ export default function Sidebar() {
       {/* Profil + Déconnexion */}
       <div className="px-3 py-4 border-t border-white/10">
         {user && (
-          <div className="flex items-center gap-3 px-3 py-3 rounded-xl mb-2"
-            style={{ background: 'rgba(255,255,255,0.05)' }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-              {user.prenom?.[0]}{user.nom?.[0]}
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user.prenom} {user.nom}</p>
-              <p className="text-white/40 text-xs truncate">{isAdmin ? 'Administrateur' : 'Collaborateur'}</p>
-            </div>
-          </div>
-        )}
+  <div className="flex items-center gap-3 px-3 py-3 rounded-xl mb-2"
+    style={{ background: 'rgba(255,255,255,0.05)' }}>
+    {user.avatar_url ? (
+      <img src={user.avatar_url} alt="Avatar"
+        className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+    ) : (
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+        style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+        {user.prenom?.[0]}{user.nom?.[0]}
+      </div>
+    )}
+    <div className="min-w-0">
+      <p className="text-white text-xs font-semibold truncate">{user.prenom} {user.nom}</p>
+      <p className="text-white/40 text-xs truncate">{isAdmin ? 'Administrateur' : 'Collaborateur'}</p>
+    </div>
+  </div>
+)}
         <motion.button onClick={deconnexion}
           whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
