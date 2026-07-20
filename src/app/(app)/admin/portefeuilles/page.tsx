@@ -30,9 +30,21 @@ export default function PortefeuillesPage() {
   }
 
   async function changerRole(collaborateurId: string, role: string) {
-    await supabase.from('collaborateurs').update({ role }).eq('id', collaborateurId)
-    charger()
+  // Compter les admins actuels
+  const { data: admins } = await supabase
+    .from('collaborateurs')
+    .select('id')
+    .eq('role', 'admin')
+
+  // Bloquer si c'est le dernier admin
+  if (role === 'collaborateur' && admins && admins.length <= 1) {
+    alert('Impossible — il doit y avoir au moins un administrateur dans le système.')
+    return
   }
+
+  await supabase.from('collaborateurs').update({ role }).eq('id', collaborateurId)
+  charger()
+}
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
@@ -120,11 +132,12 @@ export default function PortefeuillesPage() {
                       </div>
                     </div>
                     <select value={c.role} onChange={e => changerRole(c.id, e.target.value)}
-                      className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500"
-                      style={{ color: c.role === 'admin' ? '#1a3c2e' : '#6b7280' }}>
-                      <option value="collaborateur">Collaborateur</option>
-                      <option value="admin">Admin</option>
-                    </select>
+  className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500"
+  style={{ color: c.role === 'admin' ? '#1a3c2e' : '#6b7280' }}
+  disabled={c.role === 'admin' && collaborateurs.filter(x => x.role === 'admin').length <= 1}>
+  <option value="collaborateur">Collaborateur</option>
+  <option value="admin">Admin</option>
+</select>
                   </motion.div>
                 ))}
               </AnimatePresence>
