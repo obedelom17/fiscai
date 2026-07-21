@@ -40,6 +40,12 @@ export default function AuthPage() {
       router.push('/dashboard')
     }
     setLoading(false)
+
+    if (password.length < 8) {
+    setErreur('Le mot de passe doit contenir au moins 8 caractères')
+    setLoading(false)
+    return
+  }
   }
 
   async function handleGoogle() {
@@ -157,10 +163,17 @@ export default function AuthPage() {
 
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Mot de passe</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                onKeyDown={e => e.key === 'Enter' && (mode === 'connexion' ? handleConnexion() : handleInscription())}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+<input type="password" value={password} onChange={e => setPassword(e.target.value)}
+  placeholder="••••••••"
+  onKeyDown={e => e.key === 'Enter' && (mode === 'connexion' ? handleConnexion() : handleInscription())}
+  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+{mode === 'inscription' && (
+  <p className="text-xs mt-1.5 flex items-center gap-1.5"
+    style={{ color: password.length === 0 ? '#9ca3af' : password.length < 8 ? '#dc2626' : '#2d6a4f' }}>
+    <span>{password.length === 0 ? '○' : password.length < 8 ? '✕' : '✓'}</span>
+    Minimum 8 caractères {password.length > 0 && `(${password.length}/8)`}
+  </p>
+)}
             </div>
 
             {erreur && (

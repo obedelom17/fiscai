@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
@@ -23,7 +24,7 @@ export default function ParametresPage() {
   const [msgPassword, setMsgPassword] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
-
+  const router = useRouter()
   useEffect(() => { charger() }, [])
 
   async function charger() {
@@ -280,6 +281,31 @@ export default function ParametresPage() {
             </motion.button>
           </div>
         </motion.div>
+
+        {/* 2FA */}
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.45 }}
+  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="px-6 py-4 border-b border-gray-100"
+    style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+    <h2 className="font-bold text-white">Authentification à deux facteurs</h2>
+    <p className="text-green-300 text-xs mt-0.5">Renforcez la sécurité de votre compte</p>
+  </div>
+  <div className="p-6">
+    <p className="text-sm text-gray-500 mb-4">
+      Activez le 2FA pour protéger votre compte avec une application d'authentification (Google Authenticator, Authy...).
+    </p>
+    <motion.button
+      onClick={() => router.push('/auth/2fa')}
+      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+      className="px-6 py-2.5 rounded-xl text-white text-sm font-medium shadow-md"
+      style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+      Gérer le 2FA
+    </motion.button>
+  </div>
+</motion.div>
 
         {/* Danger zone */}
         <motion.div
