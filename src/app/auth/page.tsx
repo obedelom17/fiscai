@@ -42,6 +42,8 @@ export default function AuthPage() {
     setLoading(false)
   }
 
+  
+
   return (
     <div className="min-h-screen flex" style={{ 
   backgroundImage: 'url(https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=80)',
@@ -140,6 +142,7 @@ export default function AuthPage() {
               <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Email</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="votre@email.com"
+                onKeyDown={e => e.key === 'Enter' && (mode === 'connexion' ? handleConnexion() : handleInscription())}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
 
@@ -147,6 +150,7 @@ export default function AuthPage() {
               <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Mot de passe</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
+                onKeyDown={e => e.key === 'Enter' && (mode === 'connexion' ? handleConnexion() : handleInscription())}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
 
@@ -169,3 +173,4 @@ export default function AuthPage() {
     </div>
   )
 }
+

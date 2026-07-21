@@ -21,21 +21,25 @@ export default function AssistantPage() {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   async function chargerContexte() {
-    const { data: clients } = await supabase.from('clients').select('raison_sociale, nif, regime_fiscal')
-    const { data: dossiers } = await supabase
-      .from('dossiers_fiscaux')
-      .select('type_impot, statut, date_echeance, periode_mois, periode_annee, clients(raison_sociale)')
-      .order('date_echeance', { ascending: true })
-      .limit(20)
+    try {
+      const { data: clients } = await supabase.from('clients').select('raison_sociale, nif, regime_fiscal')
+      const { data: dossiers } = await supabase
+        .from('dossiers_fiscaux')
+        .select('type_impot, statut, date_echeance, periode_mois, periode_annee, clients(raison_sociale)')
+        .order('date_echeance', { ascending: true })
+        .limit(20)
 
-    const ctx = `
+      const ctx = `
 CLIENTS (${clients?.length || 0}) :
 ${clients?.map(c => `- ${c.raison_sociale} (NIF: ${c.nif}, Régime: ${c.regime_fiscal})`).join('\n') || 'Aucun'}
 
 DOSSIERS FISCAUX RÉCENTS :
 ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} | ${d.statut} | Échéance: ${new Date(d.date_echeance).toLocaleDateString('fr-FR')}`).join('\n') || 'Aucun'}
 `
-    setContexte(ctx)
+      setContexte(ctx)
+    } catch (e) {
+      console.error('Erreur contexte assistant:', e)
+    }
   }
 
   async function envoyer() {

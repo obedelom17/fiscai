@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
   // Si connecté et sur /auth → redirige vers /dashboard
   if (user && request.nextUrl.pathname.startsWith('/auth')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard/clients'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
   if (user && request.nextUrl.pathname.startsWith('/auth')) {

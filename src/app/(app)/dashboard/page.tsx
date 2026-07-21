@@ -23,14 +23,15 @@ export default function DashboardHome() {
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    const { data: { user: u } } = await supabase.auth.getUser()
-    if (!u) return
+    try {
+      const { data: { user: u } } = await supabase.auth.getUser()
+      if (!u) { setLoading(false); return }
 
-    const { data: collab } = await supabase.from('collaborateurs').select('prenom, nom, avatar_url, role').eq('id', u.id).single()
-    setUser(collab)
+      const { data: collab } = await supabase.from('collaborateurs').select('prenom, nom, avatar_url, role').eq('id', u.id).single()
+      setUser(collab)
 
-    const { data: clients } = await supabase.from('clients').select('id')
-    const { data: dossiers } = await supabase.from('dossiers_fiscaux').select('*, clients(raison_sociale)').order('date_echeance', { ascending: true })
+      const { data: clients } = await supabase.from('clients').select('id')
+      const { data: dossiers } = await supabase.from('dossiers_fiscaux').select('*, clients(raison_sociale)').order('date_echeance', { ascending: true })
 
     const aujourd = new Date()
     const dans5 = new Date()
@@ -48,7 +49,11 @@ export default function DashboardHome() {
       alertes: urgents.length
     })
     setDossiersUrgents(urgents.slice(0, 5))
-    setLoading(false)
+    } catch (e) {
+      console.error('Erreur dashboard:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const heure = new Date().getHours()

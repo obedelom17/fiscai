@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useRole } from '@/lib/useRole'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -13,6 +13,54 @@ export default function Sidebar() {
   const supabase = createClient()
   const { isAdmin, loading } = useRole()
   const [user, setUser] = useState<{ prenom: string; nom: string; email: string; avatar_url: string | null } | null>(null)
+  const [notifications, setNotifications] = useState<{ id: string; message: string; type: string }[]>([])
+  const [showNotifs, setShowNotifs] = useState(false)
+
+  useEffect(() => {
+  async function chargerNotifications() {
+    const aujourd = new Date()
+    const dans5 = new Date()
+    dans5.setDate(dans5.getDate() + 5)
+
+    const { data } = await supabase
+      .from('dossiers_fiscaux')
+      .select('*, clients(raison_sociale)')
+      .neq('statut', 'televerse_otr')
+
+    const notifs: { id: string; message: string; type: string }[] = []
+
+    data?.forEach(d => {
+      const ech = new Date(d.date_echeance)
+      if (ech < aujourd) {
+        notifs.push({
+          id: d.id,
+          message: `${d.clients?.raison_sociale} — ${d.type_impot} en retard`,
+          type: 'retard'
+        })
+      } else if (ech <= dans5) {
+        notifs.push({
+          id: d.id,
+          message: `${d.clients?.raison_sociale} — ${d.type_impot} échéance le ${ech.toLocaleDateString('fr-FR')}`,
+          type: 'urgent'
+        })
+      }
+    })
+
+    setNotifications(notifs)
+  }
+
+  chargerNotifications()
+
+  // Temps réel Supabase
+  const channel = supabase
+    .channel('dossiers-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'dossiers_fiscaux' }, () => {
+      chargerNotifications()
+    })
+    .subscribe()
+
+  return () => { supabase.removeChannel(channel) }
+}, [])
 
   useEffect(() => {
     async function charger() {
@@ -102,24 +150,104 @@ export default function Sidebar() {
           )
         })}
 
-        {/* Séparateur */}
-        <div className="pt-4 mt-4 border-t border-white/10">
-          <p className="text-xs text-white/30 uppercase tracking-wider px-3 mb-2">Compte</p>
-          <motion.div whileHover={{ x: 3 }}>
-            <Link href="/parametres"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-              style={pathname === '/parametres'
-                ? { background: 'rgba(232,163,23,0.15)', color: '#e8a317', borderLeft: '3px solid #e8a317' }
-                : { color: 'rgba(255,255,255,0.65)', borderLeft: '3px solid transparent' }}>
-              <svg className="w-5 h-5" style={{ color: pathname === '/parametres' ? '#e8a317' : 'rgba(255,255,255,0.5)' }}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Paramètres
-            </Link>
+       {/* Séparateur */}
+<div className="pt-4 mt-4 border-t border-white/10">
+  <div className="flex items-center justify-between px-3 mb-2">
+    <p className="text-xs text-white/30 uppercase tracking-wider">Compte</p>
+    {/* Cloche notifications */}
+    <div className="relative">
+      <motion.button
+        onClick={() => setShowNotifs(!showNotifs)}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        className="relative p-1.5 rounded-lg transition-all"
+        style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}>
+        <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        {notifications.length > 0 && (
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-bold"
+            style={{ background: '#dc2626', fontSize: '9px' }}>
+            {notifications.length}
+          </motion.span>
+        )}
+      </motion.button>
+
+      {/* Dropdown notifications */}
+      <AnimatePresence>
+      {showNotifs && (
+  <div className="fixed inset-0 z-40" onClick={() => setShowNotifs(false)} />
+)}
+
+        {showNotifs && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            transition={{ duration: 0.15 }}
+            className="fixed w-72 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+            style={{ background: 'white', bottom: '120px', left: '16px' }}>
+            <div className="px-4 py-3 border-b border-gray-100"
+              style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+              <p className="text-sm font-bold text-white">Notifications</p>
+              <p className="text-xs text-green-300 mt-0.5">{notifications.length} alerte(s) active(s)</p>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-sm text-gray-400">Aucune alerte</p>
+                </div>
+              ) : notifications.map((n, i) => (
+                <motion.div key={n.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="px-4 py-3 border-b border-gray-50 flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                    style={{ background: n.type === 'retard' ? '#dc2626' : '#d97706' }} />
+                  <div>
+                    <p className="text-xs font-medium text-gray-800">{n.message}</p>
+                    <p className="text-xs mt-0.5" style={{ color: n.type === 'retard' ? '#dc2626' : '#d97706' }}>
+                      {n.type === 'retard' ? 'En retard' : 'Échéance proche'}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            {notifications.length > 0 && (
+              <div className="px-4 py-3">
+                <Link href="/dashboard/dossiers"
+                  onClick={() => setShowNotifs(false)}
+                  className="block text-center text-xs font-medium py-2 rounded-xl transition-all"
+                  style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                  Voir tous les dossiers
+                </Link>
+              </div>
+            )}
           </motion.div>
-        </div>
+        )}
+      </AnimatePresence>
+    </div>
+  </div>
+
+  <motion.div whileHover={{ x: 3 }}>
+    <Link href="/parametres"
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+      style={pathname === '/parametres'
+        ? { background: 'rgba(232,163,23,0.15)', color: '#e8a317', borderLeft: '3px solid #e8a317' }
+        : { color: 'rgba(255,255,255,0.65)', borderLeft: '3px solid transparent' }}>
+      <svg className="w-5 h-5" style={{ color: pathname === '/parametres' ? '#e8a317' : 'rgba(255,255,255,0.5)' }}
+        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+      Paramètres
+    </Link>
+  </motion.div>
+</div>
       </nav>
 
       {/* Profil + Déconnexion */}

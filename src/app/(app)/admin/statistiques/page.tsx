@@ -33,16 +33,21 @@ export default function StatistiquesPage() {
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    const { data: d } = await supabase
-      .from('dossiers_fiscaux')
-      .select('*, clients(raison_sociale), collaborateurs(nom, prenom)')
-    const { data: r } = await supabase
-      .from('relances')
-      .select('*, clients(raison_sociale)')
-      .order('date_envoi', { ascending: true })
-    setDossiers(d || [])
-    setRelances(r || [])
-    setLoading(false)
+    try {
+      const { data: d } = await supabase
+        .from('dossiers_fiscaux')
+        .select('*, clients(raison_sociale), collaborateurs(nom, prenom)')
+      const { data: r } = await supabase
+        .from('relances')
+        .select('*, clients(raison_sociale)')
+        .order('date_envoi', { ascending: true })
+      setDossiers(d || [])
+      setRelances(r || [])
+    } catch (e) {
+      console.error('Erreur statistiques:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const total = dossiers.length

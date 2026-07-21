@@ -33,10 +33,17 @@ export default function ClientsPage() {
   useEffect(() => { chargerClients() }, [])
 
   async function chargerClients() {
-    const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
-    setClients(data || [])
-    setLoading(false)
-  }
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .order('created_at', { ascending: false })
+  
+  console.log('clients data:', data)
+  console.log('clients error:', error)
+  
+  setClients(data || [])
+  setLoading(false)
+}
 
   function ouvrirFormulaire(client?: Client) {
     if (client) {

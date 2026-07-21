@@ -73,19 +73,24 @@ export default function DossiersPage() {
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    const { data: d } = await supabase
-      .from('dossiers_fiscaux')
-      .select('*, clients(raison_sociale, email_contact), collaborateurs(nom, prenom)')
-      .order('date_echeance', { ascending: true })
-    const { data: c } = await supabase.from('clients').select('id, raison_sociale, email_contact')
-    const { data: r } = await supabase
-      .from('relances')
-      .select('*, clients(raison_sociale), dossiers_fiscaux(type_impot, periode_mois, periode_annee)')
-      .order('date_envoi', { ascending: false })
-    setDossiers(d || [])
-    setClients(c || [])
-    setRelances(r || [])
-    setLoading(false)
+    try {
+      const { data: d } = await supabase
+        .from('dossiers_fiscaux')
+        .select('*, clients(raison_sociale, email_contact), collaborateurs(nom, prenom)')
+        .order('date_echeance', { ascending: true })
+      const { data: c } = await supabase.from('clients').select('id, raison_sociale, email_contact')
+      const { data: r } = await supabase
+        .from('relances')
+        .select('*, clients(raison_sociale), dossiers_fiscaux(type_impot, periode_mois, periode_annee)')
+        .order('date_envoi', { ascending: false })
+      setDossiers(d || [])
+      setClients(c || [])
+      setRelances(r || [])
+    } catch (e) {
+      console.error('Erreur dossiers:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function ouvrirFormulaire(dossier?: Dossier) {
