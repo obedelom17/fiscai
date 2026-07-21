@@ -23,15 +23,22 @@ export default function DashboardHome() {
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    try {
-      const { data: { user: u } } = await supabase.auth.getUser()
-      if (!u) { setLoading(false); return }
+    const { data: { user: u } } = await supabase.auth.getUser()
+    if (!u) return
 
-      const { data: collab } = await supabase.from('collaborateurs').select('prenom, nom, avatar_url, role').eq('id', u.id).single()
-      setUser(collab)
+    const { data: collab } = await supabase
+      .from('collaborateurs')
+      .select('prenom, nom, avatar_url, role')
+      .eq('id', u.id)
+      .single()
 
-      const { data: clients } = await supabase.from('clients').select('id')
-      const { data: dossiers } = await supabase.from('dossiers_fiscaux').select('*, clients(raison_sociale)').order('date_echeance', { ascending: true })
+    if (collab) setUser(collab)
+
+    const { data: clients } = await supabase.from('clients').select('id')
+    const { data: dossiers } = await supabase
+      .from('dossiers_fiscaux')
+      .select('*, clients(raison_sociale)')
+      .order('date_echeance', { ascending: true })
 
     const aujourd = new Date()
     const dans5 = new Date()
@@ -49,11 +56,7 @@ export default function DashboardHome() {
       alertes: urgents.length
     })
     setDossiersUrgents(urgents.slice(0, 5))
-    } catch (e) {
-      console.error('Erreur dashboard:', e)
-    } finally {
-      setLoading(false)
-    }
+    setLoading(false)
   }
 
   const heure = new Date().getHours()
@@ -77,7 +80,7 @@ export default function DashboardHome() {
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
 
-      {/* Bannière profil */}
+      {/* Bannière */}
       <div className="relative h-48 overflow-hidden">
         <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80"
           alt="" className="w-full h-full object-cover object-center" />
@@ -87,10 +90,9 @@ export default function DashboardHome() {
           style={{ background: 'linear-gradient(to bottom, transparent 0%, transparent 50%, #f0f4f1 100%)' }} />
       </div>
 
-      {/* Profil flottant */}
-      <div className="max-w-6xl mx-auto px-8">
+      <div className="px-8">
+        {/* Profil flottant */}
         <div className="flex items-end gap-6 -mt-16 mb-8">
-          {/* Avatar */}
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -109,7 +111,6 @@ export default function DashboardHome() {
               style={{ background: '#2d6a4f' }} />
           </motion.div>
 
-          {/* Infos */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
