@@ -92,7 +92,7 @@ export default function DashboardHome() {
 
       <div className="px-8">
         {/* Profil flottant */}
-        <div className="flex items-end gap-6 -mt-16 mb-8">
+        <div className="flex items-end gap-6 -mt-12 mb-8">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -112,11 +112,11 @@ export default function DashboardHome() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="pb-2">
-            <h1 className="text-2xl font-bold text-gray-800">
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.2 }}
+  className="pb-2 pt-16">
+  <h1 className="text-2xl font-bold text-gray-800">
               {salutation}, {user?.prenom} !
             </h1>
             <p className="text-gray-500 text-sm mt-0.5">
