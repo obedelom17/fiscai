@@ -3,7 +3,10 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+function getGroq() {
+  if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY manquant')
+  return new Groq({ apiKey: process.env.GROQ_API_KEY })
+}
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
@@ -35,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroq().chat.completions.create({
       model: 'llama-3.1-8b-instant',
       messages: [
         {

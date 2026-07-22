@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import PageHeader from '@/components/PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
@@ -31,10 +33,10 @@ export default function AssistantPage() {
 
       const ctx = `
 CLIENTS (${clients?.length || 0}) :
-${clients?.map(c => `- ${c.raison_sociale} (NIF: ${c.nif}, Régime: ${c.regime_fiscal})`).join('\n') || 'Aucun'}
+${clients?.map((c: any) => `- ${c.raison_sociale} (NIF: ${c.nif}, Régime: ${c.regime_fiscal})`).join('\n') || 'Aucun'}
 
 DOSSIERS FISCAUX RÉCENTS :
-${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} | ${d.statut} | Échéance: ${new Date(d.date_echeance).toLocaleDateString('fr-FR')}`).join('\n') || 'Aucun'}
+${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} | ${d.statut} | Échéance: ${new Date(d.date_echeance).toLocaleDateString('fr-FR')}`).join('\n') || 'Aucun'}
 `
       setContexte(ctx)
     } catch (e) {
@@ -81,7 +83,7 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
   imageUrl="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80"
 />
 
-      <div className="flex-1 flex flex-col overflow-hidden px-8 py-6 gap-4">
+      <div className="flex-1 flex flex-col overflow-hidden px-4 md:px-8 py-4 md:py-6 gap-4">
 
         {/* Suggestions */}
         <AnimatePresence>
@@ -90,7 +92,7 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, height: 0 }}
-              className="grid grid-cols-2 gap-3 flex-shrink-0">
+              className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 flex-shrink-0">
               {suggestions.map((s, i) => (
                 <motion.button key={i}
                   initial={{ opacity: 0, y: 10 }}

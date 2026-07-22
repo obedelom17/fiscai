@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
@@ -109,7 +111,7 @@ export default function ParametresPage() {
         imageUrl="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80"
       />
 
-      <div className="px-8 py-8 space-y-6">
+      <div className="px-4 md:px-8 py-6 md:py-8 space-y-6">
 
         {/* Photo de profil */}
         <motion.div
@@ -122,7 +124,7 @@ export default function ParametresPage() {
             <h2 className="font-bold text-white">Photo de profil</h2>
             <p className="text-green-300 text-xs mt-0.5">Votre photo visible dans la sidebar</p>
           </div>
-          <div className="p-6 flex items-center gap-6">
+          <div className="p-5 md:p-6 flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6">
             {/* Avatar actuel */}
             <div className="relative flex-shrink-0">
               {avatarUrl ? (
@@ -185,8 +187,8 @@ export default function ParametresPage() {
             <h2 className="font-bold text-white">Informations personnelles</h2>
             <p className="text-green-300 text-xs mt-0.5">Votre nom affiché dans l'application</p>
           </div>
-          <div className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="p-5 md:p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Prénom</label>
                 <input value={prenom} onChange={e => setPrenom(e.target.value)}
@@ -223,7 +225,7 @@ export default function ParametresPage() {
             <h2 className="font-bold text-white">Adresse email</h2>
             <p className="text-green-300 text-xs mt-0.5">Email actuel : {email}</p>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-5 md:p-6 space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Nouvel email</label>
               <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
@@ -255,7 +257,7 @@ export default function ParametresPage() {
             <h2 className="font-bold text-white">Mot de passe</h2>
             <p className="text-green-300 text-xs mt-0.5">Minimum 6 caractères</p>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-5 md:p-6 space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Nouveau mot de passe</label>
               <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}

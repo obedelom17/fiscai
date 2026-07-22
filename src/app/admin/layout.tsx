@@ -10,17 +10,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !isAdmin) {
-      router.push('/dashboard')
-    }
+    if (!loading && !isAdmin) router.push('/dashboard')
   }, [isAdmin, loading])
 
   if (loading) return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-screen lg:h-screen lg:overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-        <div className="w-8 h-8 rounded-full border-2 animate-spin"
-          style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
+      <main className="flex-1 overflow-y-auto pt-14 lg:pt-0 flex items-center justify-center" style={{ background: '#f0f4f1' }}>
+        <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
       </main>
     </div>
   )
@@ -28,9 +25,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isAdmin) return null
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-screen lg:h-screen lg:overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pt-14 lg:pt-0">
         {children}
       </main>
     </div>

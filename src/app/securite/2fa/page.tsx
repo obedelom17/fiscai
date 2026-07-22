@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
@@ -24,7 +26,7 @@ export default function TwoFactorPage() {
 
   async function verifierStatut() {
     const { data } = await supabase.auth.mfa.listFactors()
-    const facteur = data?.totp?.find(f => f.status === 'verified')
+    const facteur = data?.totp?.find((f: any) => f.status === 'verified')
     if (facteur) {
       setDejaActif(true)
       setFactorId(facteur.id)
@@ -37,7 +39,7 @@ export default function TwoFactorPage() {
 
     // Supprimer les facteurs non vérifiés existants
     const { data: factors } = await supabase.auth.mfa.listFactors()
-    const unverified = factors?.totp?.filter(f => f.status === 'unverified') || []
+    const unverified = factors?.totp?.filter((f: any) => f.status === 'unverified') || []
     for (const f of unverified) {
       await supabase.auth.mfa.unenroll({ factorId: f.id })
     }

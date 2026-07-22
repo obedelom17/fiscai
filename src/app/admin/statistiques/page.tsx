@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
@@ -137,10 +139,10 @@ export default function StatistiquesPage() {
   imageUrl="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80"
 />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
         {/* KPIs */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
           {[
             { label: 'Total dossiers', value: total, color: '#1a3c2e' },
             { label: 'Dossiers à jour', value: aJour, color: '#2d6a4f' },
@@ -154,7 +156,7 @@ export default function StatistiquesPage() {
               whileHover={{ y: -3, boxShadow: '0 8px 25px rgba(0,0,0,0.08)' }}
               className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-default">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-              <p className="text-4xl font-bold mt-2" style={{ color: kpi.color }}>{kpi.value}</p>
+              <p className="text-3xl md:text-4xl font-bold mt-2" style={{ color: kpi.color }}>{kpi.value}</p>
               <div className="mt-3 w-full h-1.5 rounded-full" style={{ background: '#f3f4f6' }}>
                 <motion.div
                   initial={{ width: 0 }}
@@ -202,7 +204,7 @@ export default function StatistiquesPage() {
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
           {/* Conformité anneau */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -243,7 +245,7 @@ export default function StatistiquesPage() {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
           {/* Par collaborateur */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
