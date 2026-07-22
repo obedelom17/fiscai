@@ -181,51 +181,51 @@ export default function DossiersPage() {
     if (!emailContenu.trim()) return
     setSendingRelance(true)
 
-    if (canalRelance === 'whatsapp') {
-      // Enregistrer en base + ouvrir WhatsApp
-      await fetch('/api/send-relance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dossierId: dossier.id,
-          contenu: emailContenu,
+    try {
+      if (canalRelance === 'whatsapp') {
+        const tel = (dossier.clients.telephone || '').replace(/[^0-9]/g, '')
+        const msg = encodeURIComponent(emailContenu)
+        if (tel) {
+          window.open(`https://wa.me/${tel}?text=${msg}`, '_blank')
+        } else {
+          await navigator.clipboard.writeText(emailContenu)
+          alert('Numéro non renseigné — message copié dans le presse-papier')
+        }
+        await supabase.from('relances').insert({
+          dossier_id: dossier.id,
+          client_id: dossier.client_id,
+          contenu_email: emailContenu,
+          statut: 'envoye_whatsapp',
           canal: 'whatsapp',
         })
-      })
-      // Nettoyer le numéro (enlever espaces, tirets, +) et ouvrir wa.me
-      const tel = (dossier.clients.telephone || '').replace(/[^0-9]/g, '')
-      const msg = encodeURIComponent(emailContenu)
-      if (tel) {
-        window.open(`https://wa.me/${tel}?text=${msg}`, '_blank')
+        setRelanceEnvoyee('whatsapp')
       } else {
-        // Pas de numéro : copier le message
-        await navigator.clipboard.writeText(emailContenu)
-        alert('Numéro non renseigné — message copié dans le presse-papier')
-      }
-      setRelanceEnvoyee('whatsapp')
-    } else {
-      // Email via Resend
-      const res = await fetch('/api/send-relance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dossierId: dossier.id,
-          clientEmail: dossier.clients.email_contact,
-          clientNom: dossier.clients.raison_sociale,
-          contenu: emailContenu,
+        const emailjs = (await import('@emailjs/browser')).default
+        await emailjs.send(
+          process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
+          process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
+          {
+            to_email: dossier.clients.email_contact,
+            from_name: 'Experts Afrique Conseils',
+            message: emailContenu,
+          },
+          process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
+        )
+        await supabase.from('relances').insert({
+          dossier_id: dossier.id,
+          client_id: dossier.client_id,
+          contenu_email: emailContenu,
+          statut: 'envoye',
           canal: 'email',
         })
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        alert('Erreur envoi email: ' + (data.error || 'Erreur inconnue'))
-      } else {
         setRelanceEnvoyee('email')
       }
+    } catch (err: any) {
+      alert('Erreur envoi : ' + (err?.message || 'Vérifiez vos clés EmailJS'))
+    } finally {
+      setSendingRelance(false)
+      charger()
     }
-
-    setSendingRelance(false)
-    charger()
   }
 
   const aujourd = new Date()
