@@ -49,14 +49,20 @@ ${dossiers?.map(d => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} 
     setMessages(prev => [...prev, { role: 'user', content: userMsg }])
     setLoading(true)
 
-    const res = await fetch('/api/assistant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userMsg, contexte })
-    })
-    const data = await res.json()
-    setMessages(prev => [...prev, { role: 'assistant', content: data.reponse }])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMsg, contexte })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reponse }])
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Désolé, une erreur est survenue. Veuillez réessayer.' }])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const suggestions = [

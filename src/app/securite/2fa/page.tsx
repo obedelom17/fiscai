@@ -16,6 +16,7 @@ export default function TwoFactorPage() {
   const [loading, setLoading] = useState(false)
   const [erreur, setErreur] = useState('')
   const [dejaActif, setDejaActif] = useState(false)
+  const [copied, setCopied] = useState(false)
   const supabase = createClient()
   const router = useRouter()
 
@@ -31,37 +32,46 @@ export default function TwoFactorPage() {
   }
 
   async function activerMFA() {
-  setLoading(true)
-  setErreur('')
-  
-  // Supprimer les facteurs non vérifiés existants
-  const { data: factors } = await supabase.auth.mfa.listFactors()
-  const unverified = factors?.totp?.filter(f => f.status === 'unverified') || []
-  for (const f of unverified) {
-    await supabase.auth.mfa.unenroll({ factorId: f.id })
-  }
+    setLoading(true)
+    setErreur('')
 
-  const { data, error } = await supabase.auth.mfa.enroll({
-    factorType: 'totp',
-    issuer: 'FiscAl',
-    friendlyName: 'FiscAl Authenticator'
-  })
-  if (error) { setErreur(error.message); setLoading(false); return }
-  setQrCode(data.totp.qr_code)
-  setSecret(data.totp.secret)
-  setFactorId(data.id)
-  setEtape('scan')
-  setLoading(false)
-}
+    // Supprimer les facteurs non vérifiés existants
+    const { data: factors } = await supabase.auth.mfa.listFactors()
+    const unverified = factors?.totp?.filter(f => f.status === 'unverified') || []
+    for (const f of unverified) {
+      await supabase.auth.mfa.unenroll({ factorId: f.id })
+    }
+
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      issuer: 'FiscAl',
+      friendlyName: 'FiscAl Authenticator'
+    })
+    if (error) { setErreur(error.message); setLoading(false); return }
+    setQrCode(data.totp.qr_code)
+    setSecret(data.totp.secret)
+    setFactorId(data.id)
+    setEtape('scan')
+    setLoading(false)
+  }
 
   async function verifierCode() {
     if (code.length < 6) return
     setLoading(true)
     setErreur('')
+
     const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId })
     if (ce) { setErreur(ce.message); setLoading(false); return }
-    const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code })
-    if (error) { setErreur('Code incorrect. Réessayez.'); setLoading(false); return }
+
+    const { error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.id,
+      code
+    })
+    if (error) { setErreur('Code incorrect. Vérifiez votre application et réessayez.'); setLoading(false); return }
+
+    // Rafraîchir la session pour que le niveau AAL2 soit pris en compte
+    await supabase.auth.refreshSession()
     router.push('/dashboard')
   }
 
@@ -69,15 +79,29 @@ export default function TwoFactorPage() {
     if (codeDesactiver.length < 6) return
     setLoading(true)
     setErreur('')
+
     const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId })
     if (ce) { setErreur(ce.message); setLoading(false); return }
-    const { error: ve } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code: codeDesactiver })
+
+    const { error: ve } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.id,
+      code: codeDesactiver
+    })
     if (ve) { setErreur('Code incorrect'); setLoading(false); return }
+
     await supabase.auth.mfa.unenroll({ factorId })
     setDejaActif(false)
     setEtape('setup')
     setCodeDesactiver('')
+    setFactorId('')
     setLoading(false)
+  }
+
+  function copierSecret() {
+    navigator.clipboard.writeText(secret)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -132,6 +156,7 @@ export default function TwoFactorPage() {
               onChange={e => setCodeDesactiver(e.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={e => e.key === 'Enter' && desactiverMFA()}
               placeholder="000000" maxLength={6}
+              autoFocus
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
             {erreur && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{erreur}</p>}
             <div className="flex gap-3">
@@ -140,7 +165,7 @@ export default function TwoFactorPage() {
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-red-600 text-white disabled:opacity-50">
                 {loading ? 'Désactivation...' : 'Confirmer'}
               </motion.button>
-              <motion.button onClick={() => setEtape('setup')}
+              <motion.button onClick={() => { setEtape('setup'); setErreur('') }}
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600">
                 Annuler
@@ -189,12 +214,21 @@ export default function TwoFactorPage() {
             <p className="text-sm font-semibold text-gray-700">
               1. Scannez ce QR code avec votre application
             </p>
-           <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-200">
-  {qrCode && <QRCodeSVG value={qrCode} size={180} />}
-</div>
-            <div className="p-3 rounded-xl" style={{ background: '#f8fafb' }}>
-              <p className="text-xs text-gray-500 mb-1">Code manuel :</p>
-              <p className="text-xs font-mono font-bold tracking-widest text-gray-700 break-all">{secret}</p>
+            <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-200">
+              {qrCode && <QRCodeSVG value={qrCode} size={180} />}
+            </div>
+            <div className="p-3 rounded-xl flex items-center justify-between gap-3" style={{ background: '#f8fafb' }}>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500 mb-1">Code manuel :</p>
+                <p className="text-xs font-mono font-bold tracking-widest text-gray-700 break-all">{secret}</p>
+              </div>
+              <button onClick={copierSecret}
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                style={copied
+                  ? { background: '#f0f9f4', color: '#2d6a4f', borderColor: '#2d6a4f' }
+                  : { background: 'white', color: '#6b7280', borderColor: '#e5e7eb' }}>
+                {copied ? '✓ Copié' : 'Copier'}
+              </button>
             </div>
             <p className="text-sm font-semibold text-gray-700">
               2. Entrez le code à 6 chiffres
@@ -203,6 +237,7 @@ export default function TwoFactorPage() {
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={e => e.key === 'Enter' && verifierCode()}
               placeholder="000000" maxLength={6}
+              autoFocus
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
             {erreur && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{erreur}</p>}
             <motion.button onClick={verifierCode} disabled={loading || code.length < 6}

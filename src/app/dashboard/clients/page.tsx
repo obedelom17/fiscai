@@ -38,8 +38,6 @@ export default function ClientsPage() {
     .select('*')
     .order('created_at', { ascending: false })
   
-  console.log('clients data:', data)
-  console.log('clients error:', error)
   
   setClients(data || [])
   setLoading(false)
