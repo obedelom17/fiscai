@@ -298,7 +298,7 @@ export default function ParametresPage() {
       Activez le 2FA pour protéger votre compte avec une application d'authentification (Google Authenticator, Authy...).
     </p>
     <motion.button
-      onClick={() => router.push('/auth/2fa')}
+      onClick={() => router.push('/securite/2fa')}
       whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
       className="px-6 py-2.5 rounded-xl text-white text-sm font-medium shadow-md"
       style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
