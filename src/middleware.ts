@@ -9,6 +9,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Laisser passer la page 2FA (gérée côté client)
+  if (pathname.startsWith('/securite')) {
+    return NextResponse.next()
+  }
+
   // Laisser passer les assets statiques
   if (
     pathname.startsWith('/_next') ||
