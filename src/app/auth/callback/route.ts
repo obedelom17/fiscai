@@ -5,7 +5,9 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const nextParam = searchParams.get('next') ?? '/dashboard'
+  // N'autoriser que les chemins internes relatifs (évite les redirections ouvertes)
+  const next = /^\/(?!\/)/.test(nextParam) ? nextParam : '/dashboard'
 
   if (!code) {
     return NextResponse.redirect(`${origin}/auth?error=no_code`)

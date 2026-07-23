@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import QRCode from 'react-qr-code'
 
 export default function TwoFactorPage() {
   const [etape, setEtape] = useState<'loading' | 'setup' | 'scan' | 'desactiver'>('loading')
@@ -109,9 +110,6 @@ export default function TwoFactorPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const qrImageUrl = qrCode
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${encodeURIComponent(qrCode)}`
-    : ''
 
   if (etape === 'loading') return (
     <div className="min-h-screen flex items-center justify-center"
@@ -226,12 +224,10 @@ export default function TwoFactorPage() {
             <p className="text-sm font-semibold text-gray-700">1. Scannez ce QR code avec votre application</p>
 
             <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-200">
-              {qrImageUrl ? (
-                <img
-                  src={qrImageUrl}
-                  alt="QR Code 2FA"
-                  width={200}
-                  height={200}
+              {qrCode ? (
+                <QRCode
+                  value={qrCode}
+                  size={200}
                   className="rounded-xl"
                 />
               ) : (
