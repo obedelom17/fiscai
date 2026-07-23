@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -19,8 +19,16 @@ export default function TwoFactorPage() {
   const [dejaActif, setDejaActif] = useState(false)
   const [copied, setCopied] = useState(false)
   const [sessionOk, setSessionOk] = useState(false)
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
   const supabase = createClient()
   const router = useRouter()
+
+  useEffect(() => {
+    if (!qrCode || !qrCanvasRef.current) return
+    import('qrcode').then(QRLib => {
+      QRLib.toCanvas(qrCanvasRef.current, qrCode, { width: 180, margin: 2 })
+    })
+  }, [qrCode])
 
   useEffect(() => {
     // Vérifier la session d'abord, puis le statut MFA
@@ -258,7 +266,7 @@ export default function TwoFactorPage() {
             </p>
             <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-200">
               {qrCode ? (
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrCode)}`} alt="QR Code 2FA" width={180} height={180} />
+                <canvas ref={qrCanvasRef} width={180} height={180} />
               ) : (
                 <div className="w-[180px] h-[180px] flex items-center justify-center">
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
