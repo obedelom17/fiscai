@@ -49,10 +49,10 @@ Voici les données actuelles du portefeuille :
 ${contexte}
 Réponds en français, de manière concise et professionnelle.`
     },
-    // Historique complet de la conversation
-    ...historique.map((h: { role: string; content: string }) => ({
+    // Historique de la conversation (borné pour éviter les abus/coûts)
+    ...(Array.isArray(historique) ? historique.slice(-20) : []).map((h: { role: string; content: string }) => ({
       role: h.role as 'user' | 'assistant',
-      content: h.content
+      content: String(h.content ?? '').slice(0, 4000)
     })),
     // Nouveau message
     { role: 'user' as const, content: message }

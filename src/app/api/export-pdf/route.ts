@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -51,7 +60,7 @@ export async function GET(request: NextRequest) {
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Bulletin fiscal — ${client.raison_sociale}</title>
+<title>Bulletin fiscal — ${escapeHtml(client.raison_sociale)}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; background: white; font-size: 11px; }
@@ -106,27 +115,27 @@ export async function GET(request: NextRequest) {
     <div class="client-grid">
       <div class="client-item">
         <div class="client-label">Raison sociale</div>
-        <div class="client-value">${client.raison_sociale}</div>
+        <div class="client-value">${escapeHtml(client.raison_sociale)}</div>
       </div>
       <div class="client-item">
         <div class="client-label">NIF</div>
-        <div class="client-value">${client.nif || '—'}</div>
+        <div class="client-value">${escapeHtml(client.nif) || '—'}</div>
       </div>
       <div class="client-item">
         <div class="client-label">Régime fiscal</div>
-        <div class="client-value">${client.regime_fiscal || '—'}</div>
+        <div class="client-value">${escapeHtml(client.regime_fiscal) || '—'}</div>
       </div>
       <div class="client-item">
         <div class="client-label">Secteur</div>
-        <div class="client-value">${client.secteur_activite || '—'}</div>
+        <div class="client-value">${escapeHtml(client.secteur_activite) || '—'}</div>
       </div>
       <div class="client-item">
         <div class="client-label">Email</div>
-        <div class="client-value">${client.email_contact || '—'}</div>
+        <div class="client-value">${escapeHtml(client.email_contact) || '—'}</div>
       </div>
       <div class="client-item">
         <div class="client-label">Téléphone</div>
-        <div class="client-value">${client.telephone || '—'}</div>
+        <div class="client-value">${escapeHtml(client.telephone) || '—'}</div>
       </div>
     </div>
   </div>
@@ -165,12 +174,12 @@ export async function GET(request: NextRequest) {
       <tbody>
         ${dossiers.map(d => `
         <tr>
-          <td><strong>${d.type_impot}</strong></td>
-          <td>${d.periode_mois ? MOIS[d.periode_mois - 1] + ' ' : ''}${d.periode_annee}</td>
+          <td><strong>${escapeHtml(d.type_impot)}</strong></td>
+          <td>${d.periode_mois ? MOIS[d.periode_mois - 1] + ' ' : ''}${escapeHtml(d.periode_annee)}</td>
           <td>${new Date(d.date_echeance).toLocaleDateString('fr-FR')}</td>
           <td>
             <span class="badge badge-${d.statut === 'en_attente' ? 'attente' : d.statut === 'recu' ? 'recu' : d.statut === 'valide' ? 'valide' : 'otr'}">
-              ${STATUT_LABELS[d.statut] || d.statut}
+              ${escapeHtml(STATUT_LABELS[d.statut] || d.statut)}
             </span>
           </td>
         </tr>`).join('')}
@@ -194,7 +203,7 @@ export async function GET(request: NextRequest) {
         <tr>
           <td>${new Date(r.date_envoi).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
           <td>${r.canal === 'whatsapp' ? 'WhatsApp' : 'Email'}</td>
-          <td>${r.statut}</td>
+          <td>${escapeHtml(r.statut)}</td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -211,7 +220,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(html, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Content-Disposition': `attachment; filename="bulletin-fiscal-${client.raison_sociale.replace(/[^a-zA-Z0-9]/g, '-')}.html"`,
+      'Content-Disposition': `attachment; filename="bulletin-fiscal-${String(client.raison_sociale).replace(/[^a-zA-Z0-9]/g, '-')}.html"`,
     },
   })
 }
