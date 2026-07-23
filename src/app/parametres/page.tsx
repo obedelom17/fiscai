@@ -31,6 +31,9 @@ export default function ParametresPage() {
   const [code2FA, setCode2FA] = useState('')
   const [afficherDesactiver, setAfficherDesactiver] = useState(false)
   const [erreur2FA, setErreur2FA] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [msgDelete, setMsgDelete] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const router = useRouter()
@@ -130,6 +133,30 @@ export default function ParametresPage() {
     setMsgPassword(error ? 'Erreur : ' + error.message : 'Mot de passe mis à jour avec succès')
     if (!error) { setNewPassword(''); setConfirmPassword('') }
     setSavingPassword(false)
+  }
+
+  async function supprimerCompte() {
+    setDeletingAccount(true)
+    setMsgDelete('')
+    try {
+      const res = await fetch('/api/delete-account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMsgDelete(data.error || 'Erreur lors de la suppression')
+        setDeletingAccount(false)
+        return
+      }
+      // Déconnexion et redirection
+      await supabase.auth.signOut()
+      router.push('/auth')
+    } catch (e: any) {
+      setMsgDelete(e.message || 'Erreur réseau')
+      setDeletingAccount(false)
+    }
   }
 
   if (loading) return <PageLoader />
@@ -397,14 +424,41 @@ export default function ParametresPage() {
           </div>
           <div className="p-6">
             <p className="text-sm text-gray-500 mb-4">
-              La suppression de votre compte est définitive. Toutes vos données seront perdues.
+              La suppression de votre compte est définitive. Vous serez déconnecté immédiatement et ne pourrez plus vous reconnecter.
             </p>
-            <motion.button
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              onClick={() => alert('Contactez un administrateur pour supprimer votre compte.')}
-              className="px-6 py-2.5 rounded-xl text-sm font-medium border-2 border-red-300 text-red-600 hover:bg-red-50 transition-all">
-              Supprimer mon compte
-            </motion.button>
+            {!confirmDelete ? (
+              <motion.button
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => setConfirmDelete(true)}
+                className="px-6 py-2.5 rounded-xl text-sm font-medium border-2 border-red-300 text-red-600 hover:bg-red-50 transition-all">
+                Supprimer mon compte
+              </motion.button>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+                  <p className="text-sm font-semibold text-red-700 mb-1">Confirmer la suppression ?</p>
+                  <p className="text-xs text-red-500">Cette action est irréversible. Votre accès sera révoqué immédiatement.</p>
+                </div>
+                {msgDelete && (
+                  <p className="text-sm px-4 py-3 rounded-xl bg-red-50 text-red-600">{msgDelete}</p>
+                )}
+                <div className="flex gap-3">
+                  <motion.button
+                    onClick={supprimerCompte}
+                    disabled={deletingAccount}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="px-6 py-2.5 rounded-xl text-sm font-medium bg-red-600 text-white disabled:opacity-50">
+                    {deletingAccount ? 'Suppression...' : 'Oui, supprimer'}
+                  </motion.button>
+                  <motion.button
+                    onClick={() => { setConfirmDelete(false); setMsgDelete('') }}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className="px-6 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600">
+                    Annuler
+                  </motion.button>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
