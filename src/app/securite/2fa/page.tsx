@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { QRCodeSVG } from 'qrcode.react'
+import QRCode from 'react-qr-code'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -259,7 +259,7 @@ export default function TwoFactorPage() {
             </p>
             <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-200">
               {qrCode ? (
-                <QRCodeSVG value={qrCode} size={180} />
+                <QRCode value={qrCode} size={180} />
               ) : (
                 <div className="w-[180px] h-[180px] flex items-center justify-center">
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
