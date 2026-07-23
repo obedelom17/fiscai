@@ -266,7 +266,7 @@ export default function DossiersPage() {
         toast(`Erreur upload ${file.name}: ${error.message}`, 'error')
         continue
       }
-      await supabase.from('dossier_documents').insert({
+      await supabase.from('documents').insert({
         dossier_id: dossier.id,
         nom_fichier: file.name,
         url_stockage: path,
@@ -287,14 +287,14 @@ export default function DossiersPage() {
   }
 
   async function chargerDocuments(dossierId: string) {
-    const { data, error } = await supabase.from('dossier_documents').select('*').eq('dossier_id', dossierId).order('created_at', { ascending: false })
+    const { data, error } = await supabase.from('documents').select('*').eq('dossier_id', dossierId).order('created_at', { ascending: false })
     console.log('[chargerDocuments]', dossierId, data, error)
     setDocumentsActif(data || [])
   }
 
   async function supprimerDocument(doc: Document, dossierId: string) {
     await supabase.storage.from('documents-fiscaux').remove([doc.url_stockage])
-    await supabase.from('dossier_documents').delete().eq('id', doc.id)
+    await supabase.from('documents').delete().eq('id', doc.id)
     await logAudit('SUPPRESSION_DOCUMENT', `Document ${doc.nom_fichier} supprimé`)
     toast('Document supprimé', 'warning')
     chargerDocuments(dossierId)
