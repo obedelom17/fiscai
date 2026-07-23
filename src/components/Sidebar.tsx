@@ -229,7 +229,7 @@ export default function Sidebar() {
       </div>
 
       {/* Sidebar desktop */}
-      <aside className="hidden lg:flex w-56 min-h-screen flex-col sticky top-0 flex-shrink-0"
+      <aside className="hidden lg:flex w-56 h-screen flex-col sticky top-0 flex-shrink-0 overflow-hidden"
         style={{ background: 'linear-gradient(180deg, #0f2318 0%, #1a3c2e 100%)' }}>
         <SidebarContent />
       </aside>
