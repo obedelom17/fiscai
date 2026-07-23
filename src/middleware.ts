@@ -48,6 +48,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  let mfaRequired = false
+  if (user) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    mfaRequired = aal?.nextLevel === 'aal2' && aal?.currentLevel !== 'aal2'
+  }
+
   // Si pas connecté et pas sur /auth → redirige vers /auth
   if (!user && !pathname.startsWith('/auth')) {
     const url = request.nextUrl.clone()
@@ -56,8 +62,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Si connecté et exactement sur /auth → redirige vers /dashboard
-  if (user && pathname === '/auth') {
+  // MFA requis : bloquer l'accès aux pages protégées sauf /auth et /securite
+  if (user && mfaRequired && !pathname.startsWith('/auth') && !pathname.startsWith('/securite')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth'
+    url.search = 'mfa=1'
+    return NextResponse.redirect(url)
+  }
+
+  // Si connecté (MFA OK) et sur /auth → redirige vers /dashboard
+  // Sauf écran post-inscription (?welcome=1) ou vérification MFA (?mfa=1)
+  if (user && !mfaRequired && pathname === '/auth' && !searchParams.get('welcome') && !searchParams.get('mfa')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     url.search = ''

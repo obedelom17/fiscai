@@ -8,6 +8,9 @@ import PageHeader from '@/components/PageHeader'
 import { useToast } from '@/components/Toast'
 import { Spinner } from '@/components/Spinner'
 import { motion, AnimatePresence } from 'framer-motion'
+import DossierCommentaires from '@/components/DossierCommentaires'
+import HistoriqueStatuts from '@/components/HistoriqueStatuts'
+import GlobalSearch from '@/components/GlobalSearch'
 import { STATUT_BADGE_CLASSES, STATUT_LABELS, MOIS } from '@/lib/constants'
 import { formatDateFr } from '@/lib/format'
 
@@ -97,9 +100,22 @@ export default function DossiersPage() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(true)
 
+  const [showSearch, setShowSearch] = useState(false)
+  const [panelOnglet, setPanelOnglet] = useState<'relance' | 'commentaires' | 'historique'>('relance')
+
   const fileRef = useRef<HTMLInputElement>(null)
   const multiFileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
+
+  // Ctrl+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setShowSearch(true) }
+      if (e.key === 'Escape') setShowSearch(false)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   useEffect(() => { charger() }, [])
 
@@ -217,8 +233,16 @@ export default function DossiersPage() {
   }
 
   async function changerStatut(id: string, statut: string, dossier: Dossier) {
+    const { data: { user } } = await supabase.auth.getUser()
+    // Enregistrer dans l'historique
+    await supabase.from('historique_statuts').insert({
+      dossier_id: id,
+      collaborateur_id: user?.id,
+      ancien_statut: dossier.statut,
+      nouveau_statut: statut,
+    })
     await supabase.from('dossiers_fiscaux').update({ statut }).eq('id', id)
-    await logAudit('CHANGEMENT_STATUT', `Statut de ${dossier.clients?.raison_sociale} (${dossier.type_impot}) → ${STATUT_LABELS[statut]}`)
+    await logAudit('CHANGEMENT_STATUT', `Statut de ${dossier.clients?.raison_sociale} (${dossier.type_impot}) : ${STATUT_LABELS[dossier.statut]} → ${STATUT_LABELS[statut]}`)
     toast(`Statut mis à jour : ${STATUT_LABELS[statut]}`)
     charger()
   }
@@ -408,17 +432,32 @@ export default function DossiersPage() {
 
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
+      <AnimatePresence>
+        {showSearch && <GlobalSearch onClose={() => setShowSearch(false)} />}
+      </AnimatePresence>
       <PageHeader
         titre="Dossiers Fiscaux"
         sousTitre="Suivi des obligations fiscales — OTR Togo"
         imageUrl="https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=1200&q=80"
         bouton={
-          <motion.button onClick={() => ouvrirFormulaire()}
-            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            className="px-4 py-2 rounded-xl text-white font-medium shadow-lg text-sm"
-            style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
-            + Nouveau
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSearch(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
+              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="hidden md:inline text-xs opacity-80">Ctrl+K</span>
+            </button>
+            <motion.button onClick={() => ouvrirFormulaire()}
+              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+              className="px-4 py-2 rounded-xl text-white font-medium shadow-lg text-sm"
+              style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+              + Nouveau
+            </motion.button>
+          </div>
         }
       />
 
@@ -587,6 +626,32 @@ export default function DossiersPage() {
                   className="text-gray-400 hover:text-gray-600 text-xl flex-shrink-0">✕</button>
               </div>
 
+              {/* Onglets panel */}
+              <div className="flex gap-2 mb-4 border-b border-gray-100 pb-3">
+                {[
+                  { key: 'relance', label: 'Relance & Documents' },
+                  { key: 'commentaires', label: 'Commentaires' },
+                  { key: 'historique', label: 'Historique statuts' },
+                ].map(o => (
+                  <button key={o.key} onClick={() => setPanelOnglet(o.key as any)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+                    style={panelOnglet === o.key
+                      ? { background: '#2d6a4f', color: 'white' }
+                      : { background: '#f3f4f6', color: '#6b7280' }}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+
+              {panelOnglet === 'commentaires' && (
+                <DossierCommentaires dossierId={dossierActif.id} />
+              )}
+
+              {panelOnglet === 'historique' && (
+                <HistoriqueStatuts dossierId={dossierActif.id} />
+              )}
+
+              {panelOnglet === 'relance' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Upload PDF drag & drop + multi-fichiers */}
                 <div>
@@ -677,7 +742,7 @@ export default function DossiersPage() {
 
                 {/* Relance IA */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Relance IA</h3>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Relance IA ✦</h3>
 
                   {/* Canal selector */}
                   <div className="flex gap-2 mb-3">
@@ -747,6 +812,7 @@ export default function DossiersPage() {
                   </AnimatePresence>
                 </div>
               </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -853,7 +919,7 @@ export default function DossiersPage() {
                           </td>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-1.5">
-                              <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id) }}
+                              <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id); setPanelOnglet('relance') }}
                                 className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                                 Gérer
                               </button>
@@ -897,7 +963,7 @@ export default function DossiersPage() {
                           Échéance : {formatDateFr(d.date_echeance)}
                         </p>
                         <div className="flex gap-1.5">
-                          <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id) }}
+                          <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id); setPanelOnglet('relance') }}
                             className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                             Gérer
                           </button>
