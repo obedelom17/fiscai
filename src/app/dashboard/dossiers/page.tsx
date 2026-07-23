@@ -137,6 +137,8 @@ export default function DossiersPage() {
       setRelances(r || [])
       setAuditLogs(logs || [])
       setModeles(mods || [])
+      // Mettre à jour dossierActif si panel ouvert
+      setDossierActif(prev => prev ? (dossiersData.find(x => x.id === prev.id) || prev) : null)
       // Suggestions proactives
       calculerSuggestions(dossiersData, r || [])
     } catch (e) {
@@ -276,8 +278,8 @@ export default function DossiersPage() {
       await supabase.from('dossiers_fiscaux').update({ statut: 'recu', date_depot: new Date().toISOString() }).eq('id', dossier.id)
       await logAudit('UPLOAD_DOCUMENT', `${success} document(s) uploadé(s) pour ${dossier.clients?.raison_sociale} (${dossier.type_impot})`)
       toast(`${success} fichier(s) uploadé(s) avec succès`)
-      charger()
-      chargerDocuments(dossier.id)
+      await charger()
+      await chargerDocuments(dossier.id)
     }
     setFichiersDrop([])
     if (fileRef.current) fileRef.current.value = ''
