@@ -34,21 +34,18 @@ export default function PortefeuillesPage() {
   }
 
   async function changerRole(collaborateurId: string, role: string) {
-  // Compter les admins actuels
-  const { data: admins } = await supabase
-    .from('collaborateurs')
-    .select('id')
-    .eq('role', 'admin')
-
-  // Bloquer si c'est le dernier admin
-  if (role === 'collaborateur' && admins && admins.length <= 1) {
-    alert('Impossible — il doit y avoir au moins un administrateur dans le système.')
-    return
+    const res = await fetch('/api/set-role', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collaborateurId, role })
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      alert(data.error || 'Erreur changement de rôle')
+      return
+    }
+    charger()
   }
-
-  await supabase.from('collaborateurs').update({ role }).eq('id', collaborateurId)
-  charger()
-}
 
   async function supprimerCollaborateur(collaborateurId: string) {
     setSupprimant(true)
