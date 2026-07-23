@@ -138,7 +138,7 @@ export default function DossiersPage() {
       setAuditLogs(logs || [])
       setModeles(mods || [])
       // Mettre à jour dossierActif si panel ouvert
-      setDossierActif(prev => prev ? (dossiersData.find(x => x.id === prev.id) || prev) : null)
+      setDossierActif(prev => prev ? (dossiersData.find((x: Dossier) => x.id === prev.id) || prev) : null)
       // Suggestions proactives
       calculerSuggestions(dossiersData, r || [])
     } catch (e) {
