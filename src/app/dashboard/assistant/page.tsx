@@ -68,6 +68,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
       if (!res.ok) throw new Error(data.error || 'Erreur serveur')
       setMessages(prev => [...prev, { role: 'assistant', content: data.reponse }])
     } catch (err) {
+      console.error('Erreur assistant:', err)
       setMessages(prev => [...prev, { role: 'assistant', content: 'Désolé, une erreur est survenue. Veuillez réessayer.' }])
     } finally {
       setLoading(false)

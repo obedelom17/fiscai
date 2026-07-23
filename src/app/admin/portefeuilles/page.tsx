@@ -21,15 +21,25 @@ export default function PortefeuillesPage() {
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    const { data: c } = await supabase.from('collaborateurs').select('*').order('nom')
-    const { data: cl } = await supabase.from('clients').select('*').order('raison_sociale')
-    setCollaborateurs(c || [])
-    setClients(cl || [])
+    const [collabRes, clientsRes] = await Promise.all([
+      supabase.from('collaborateurs').select('*').order('nom'),
+      supabase.from('clients').select('*').order('raison_sociale'),
+    ])
+    const error = collabRes.error || clientsRes.error
+    if (error) {
+      console.error('Erreur chargement portefeuilles:', error.message)
+      alert('Erreur de chargement des données : ' + error.message)
+      setLoading(false)
+      return
+    }
+    setCollaborateurs(collabRes.data || [])
+    setClients(clientsRes.data || [])
     setLoading(false)
   }
 
   async function attribuerClient(clientId: string, collaborateurId: string) {
-    await supabase.from('clients').update({ collaborateur_id: collaborateurId || null }).eq('id', clientId)
+    const { error } = await supabase.from('clients').update({ collaborateur_id: collaborateurId || null }).eq('id', clientId)
+    if (error) { alert('Erreur d\'attribution du client : ' + error.message); return }
     charger()
   }
 

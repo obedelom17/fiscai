@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   const prenom = parts[0] || ''
   const nom = parts.slice(1).join(' ') || ''
 
-  await upsertCollaborateurProfile(supabase, {
+  const { error: profileError } = await upsertCollaborateurProfile(supabase, {
     id: data.user.id,
     nom,
     prenom,
@@ -54,6 +54,11 @@ export async function GET(request: NextRequest) {
     avatar_url: meta?.avatar_url || meta?.picture || null,
   })
 
+  if (profileError) {
+    console.error('Erreur callback — création profil:', profileError.message)
+    return NextResponse.redirect(`${origin}/auth?error=profile_creation_failed`)
+  }
+
   // Détecter nouvel utilisateur Google : created_at ≈ now (< 30s)
   const createdAt = new Date(data.user.created_at).getTime()
   const isNewUser = Date.now() - createdAt < 30_000
@@ -61,6 +66,7 @@ export async function GET(request: NextRequest) {
   if (isNewUser) {
     return NextResponse.redirect(`${origin}/auth?welcome=1`)
   }
+
 
   return NextResponse.redirect(`${origin}${next}`)
 }

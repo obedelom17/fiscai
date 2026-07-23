@@ -7,9 +7,6 @@ import { createClient } from '@/lib/supabase'
 import PageHeader from '@/components/PageHeader'
 import { useToast } from '@/components/Toast'
 import { motion, AnimatePresence } from 'framer-motion'
-import DossierCommentaires from '@/components/DossierCommentaires'
-import HistoriqueStatuts from '@/components/HistoriqueStatuts'
-import GlobalSearch from '@/components/GlobalSearch'
 
 type Client = { id: string; raison_sociale: string; email_contact: string; telephone?: string }
 type Dossier = {
@@ -111,22 +108,9 @@ export default function DossiersPage() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(true)
 
-  const [showSearch, setShowSearch] = useState(false)
-  const [panelOnglet, setPanelOnglet] = useState<'relance' | 'commentaires' | 'historique'>('relance')
-
   const fileRef = useRef<HTMLInputElement>(null)
   const multiFileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
-
-  // Ctrl+K
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setShowSearch(true) }
-      if (e.key === 'Escape') setShowSearch(false)
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
 
   useEffect(() => { charger() }, [])
 
@@ -140,25 +124,30 @@ export default function DossiersPage() {
 
   async function charger() {
     try {
-      const [{ data: d }, { data: c }, { data: r }, { data: logs }, { data: mods }] = await Promise.all([
+      const [dossiersRes, clientsRes, relancesRes, logsRes, modelesRes] = await Promise.all([
         supabase.from('dossiers_fiscaux').select('*, clients(raison_sociale, email_contact, telephone), collaborateurs(nom, prenom)').order('date_echeance', { ascending: true }),
         supabase.from('clients').select('id, raison_sociale, email_contact, telephone'),
         supabase.from('relances').select('*, clients(raison_sociale), dossiers_fiscaux(type_impot, periode_mois, periode_annee)').order('date_envoi', { ascending: false }),
         supabase.from('audit_logs').select('*, collaborateurs(nom, prenom)').order('created_at', { ascending: false }).limit(100),
         supabase.from('modeles_relance').select('*').order('created_at', { ascending: false }),
       ])
-      const dossiersData = d || []
+      const firstError = [dossiersRes, clientsRes, relancesRes, logsRes, modelesRes].find(res => res.error)?.error
+      if (firstError) {
+        toast('Erreur de chargement des dossiers : ' + firstError.message, 'error')
+        return
+      }
+      const dossiersData = dossiersRes.data || []
       setDossiers(dossiersData)
-      setClients(c || [])
-      setRelances(r || [])
-      setAuditLogs(logs || [])
-      setModeles(mods || [])
+      setClients(clientsRes.data || [])
+      setRelances(relancesRes.data || [])
+      setAuditLogs(logsRes.data || [])
+      setModeles(modelesRes.data || [])
       // Mettre à jour dossierActif si panel ouvert
       setDossierActif(prev => prev ? (dossiersData.find((x: Dossier) => x.id === prev.id) || prev) : null)
       // Suggestions proactives
-      calculerSuggestions(dossiersData, r || [])
+      calculerSuggestions(dossiersData, relancesRes.data || [])
     } catch (e) {
-      // silently fail
+      toast('Erreur de chargement des dossiers : ' + (e instanceof Error ? e.message : 'réessayez'), 'error')
     } finally {
       setLoading(false)
     }
@@ -192,7 +181,8 @@ export default function DossiersPage() {
   async function logAudit(action: string, details: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('audit_logs').insert({ collaborateur_id: user.id, action, details })
+    const { error } = await supabase.from('audit_logs').insert({ collaborateur_id: user.id, action, details })
+    if (error) console.error('[logAudit] échec écriture audit:', action, error.message)
   }
 
   function ouvrirFormulaire(dossier?: Dossier) {
@@ -221,12 +211,14 @@ export default function DossiersPage() {
       date_echeance: dateEcheance,
     }
     if (dossierEnEdition) {
-      await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
+      const { error } = await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
+      if (error) { toast('Erreur : ' + error.message, 'error'); setSaving(false); return }
       await logAudit('MODIFICATION_DOSSIER', `Dossier ${typeImpot} modifié pour le client ${clients.find(c => c.id === clientId)?.raison_sociale}`)
       toast('Dossier modifié avec succès')
     } else {
       const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('dossiers_fiscaux').insert({ ...payload, statut: 'en_attente', collaborateur_id: user?.id })
+      const { error } = await supabase.from('dossiers_fiscaux').insert({ ...payload, statut: 'en_attente', collaborateur_id: user?.id })
+      if (error) { toast('Erreur : ' + error.message, 'error'); setSaving(false); return }
       await logAudit('CREATION_DOSSIER', `Nouveau dossier ${typeImpot} créé pour ${clients.find(c => c.id === clientId)?.raison_sociale}`)
       toast('Dossier créé avec succès')
     }
@@ -237,23 +229,17 @@ export default function DossiersPage() {
   async function supprimerDossier() {
     if (!dossierASupprimer) return
     setSupprimant(true)
+    const { error } = await supabase.from('dossiers_fiscaux').delete().eq('id', dossierASupprimer.id)
+    if (error) { toast('Erreur de suppression : ' + error.message, 'error'); setSupprimant(false); return }
     await logAudit('SUPPRESSION_DOSSIER', `Dossier ${dossierASupprimer.type_impot} de ${dossierASupprimer.clients?.raison_sociale} supprimé`)
-    await supabase.from('dossiers_fiscaux').delete().eq('id', dossierASupprimer.id)
     toast('Dossier supprimé', 'error')
     setDossierASupprimer(null); charger(); setSupprimant(false)
   }
 
   async function changerStatut(id: string, statut: string, dossier: Dossier) {
-    const { data: { user } } = await supabase.auth.getUser()
-    // Enregistrer dans l'historique
-    await supabase.from('historique_statuts').insert({
-      dossier_id: id,
-      collaborateur_id: user?.id,
-      ancien_statut: dossier.statut,
-      nouveau_statut: statut,
-    })
-    await supabase.from('dossiers_fiscaux').update({ statut }).eq('id', id)
-    await logAudit('CHANGEMENT_STATUT', `Statut de ${dossier.clients?.raison_sociale} (${dossier.type_impot}) : ${STATUT_LABELS[dossier.statut]} → ${STATUT_LABELS[statut]}`)
+    const { error } = await supabase.from('dossiers_fiscaux').update({ statut }).eq('id', id)
+    if (error) { toast('Erreur de mise à jour du statut : ' + error.message, 'error'); return }
+    await logAudit('CHANGEMENT_STATUT', `Statut de ${dossier.clients?.raison_sociale} (${dossier.type_impot}) → ${STATUT_LABELS[statut]}`)
     toast(`Statut mis à jour : ${STATUT_LABELS[statut]}`)
     charger()
   }
@@ -290,12 +276,17 @@ export default function DossiersPage() {
         toast(`Erreur upload ${file.name}: ${error.message}`, 'error')
         continue
       }
-      await supabase.from('documents').insert({
+      const { error: insertError } = await supabase.from('documents').insert({
         dossier_id: dossier.id,
         nom_fichier: file.name,
         url_stockage: path,
         type_document: file.type
       })
+      if (insertError) {
+        await supabase.storage.from('documents-fiscaux').remove([path])
+        toast(`Erreur enregistrement ${file.name}: ${insertError.message}`, 'error')
+        continue
+      }
       success++
     }
     if (success > 0) {
@@ -312,13 +303,15 @@ export default function DossiersPage() {
 
   async function chargerDocuments(dossierId: string) {
     const { data, error } = await supabase.from('documents').select('*').eq('dossier_id', dossierId).order('created_at', { ascending: false })
-    console.log('[chargerDocuments]', dossierId, data, error)
+    if (error) { toast('Erreur de chargement des documents : ' + error.message, 'error'); return }
     setDocumentsActif(data || [])
   }
 
   async function supprimerDocument(doc: Document, dossierId: string) {
-    await supabase.storage.from('documents-fiscaux').remove([doc.url_stockage])
-    await supabase.from('documents').delete().eq('id', doc.id)
+    const { error: storageError } = await supabase.storage.from('documents-fiscaux').remove([doc.url_stockage])
+    if (storageError) { toast('Erreur de suppression du fichier : ' + storageError.message, 'error'); return }
+    const { error } = await supabase.from('documents').delete().eq('id', doc.id)
+    if (error) { toast('Erreur de suppression du document : ' + error.message, 'error'); return }
     await logAudit('SUPPRESSION_DOCUMENT', `Document ${doc.nom_fichier} supprimé`)
     toast('Document supprimé', 'warning')
     chargerDocuments(dossierId)
@@ -352,18 +345,24 @@ export default function DossiersPage() {
     }
 
     const isWA = canalRelance === 'whatsapp'
-    const res = await fetch('/api/assistant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: `Rédige un ${isWA ? 'message WhatsApp' : 'email'} de relance professionnel en français pour demander les documents fiscaux manquants à l'entreprise "${dossier.clients.raison_sociale}". Il s'agit de leur déclaration ${dossier.type_impot}${dossier.periode_mois ? ` du mois ${MOIS[dossier.periode_mois - 1]}` : ''} ${dossier.periode_annee}. L'échéance OTR est le ${new Date(dossier.date_echeance).toLocaleDateString('fr-FR')}. ${isWA ? 'Format court, direct, adapté WhatsApp, sans mise en forme HTML.' : 'Sois professionnel, concis et urgent sans être agressif.'} Ne mets pas de signature.`,
-        contexte: '',
-        historique: [],
+    try {
+      const res = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Rédige un ${isWA ? 'message WhatsApp' : 'email'} de relance professionnel en français pour demander les documents fiscaux manquants à l'entreprise "${dossier.clients.raison_sociale}". Il s'agit de leur déclaration ${dossier.type_impot}${dossier.periode_mois ? ` du mois ${MOIS[dossier.periode_mois - 1]}` : ''} ${dossier.periode_annee}. L'échéance OTR est le ${new Date(dossier.date_echeance).toLocaleDateString('fr-FR')}. ${isWA ? 'Format court, direct, adapté WhatsApp, sans mise en forme HTML.' : 'Sois professionnel, concis et urgent sans être agressif.'} Ne mets pas de signature.`,
+          contexte: '',
+          historique: [],
+        })
       })
-    })
-    const data = await res.json()
-    setEmailContenu(data.reponse || '')
-    setGeneratingEmail(false)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
+      setEmailContenu(data.reponse || '')
+    } catch (err) {
+      toast('Erreur de génération du message : ' + (err instanceof Error ? err.message : 'réessayez'), 'error')
+    } finally {
+      setGeneratingEmail(false)
+    }
   }
 
   async function envoyerRelance(dossier: Dossier) {
@@ -379,10 +378,11 @@ export default function DossiersPage() {
           await navigator.clipboard.writeText(emailContenu)
           toast('Numéro non renseigné — message copié', 'warning')
         }
-        await supabase.from('relances').insert({
+        const { error } = await supabase.from('relances').insert({
           dossier_id: dossier.id, client_id: dossier.client_id,
           contenu_email: emailContenu, statut: 'envoye_whatsapp', canal: 'whatsapp',
         })
+        if (error) throw error
         await logAudit('RELANCE_WHATSAPP', `Relance WhatsApp envoyée à ${dossier.clients.raison_sociale}`)
         setRelanceEnvoyee('whatsapp')
         toast('Relance WhatsApp envoyée')
@@ -394,10 +394,11 @@ export default function DossiersPage() {
           { to_email: dossier.clients.email_contact, from_name: 'Experts Afrique Conseils', message: emailContenu },
           process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
         )
-        await supabase.from('relances').insert({
+        const { error } = await supabase.from('relances').insert({
           dossier_id: dossier.id, client_id: dossier.client_id,
           contenu_email: emailContenu, statut: 'envoye', canal: 'email',
         })
+        if (error) throw error
         await logAudit('RELANCE_EMAIL', `Relance email envoyée à ${dossier.clients.raison_sociale}`)
         setRelanceEnvoyee('email')
         toast('Relance email envoyée avec succès')
@@ -412,9 +413,10 @@ export default function DossiersPage() {
 
   async function sauvegarderModele() {
     if (!modeleNom.trim() || !modeleContenu.trim()) return
-    await supabase.from('modeles_relance').insert({
+    const { error } = await supabase.from('modeles_relance').insert({
       nom: modeleNom, type_impot: modeleTypeImpot, canal: modeleCanal, contenu: modeleContenu
     })
+    if (error) { toast('Erreur de sauvegarde du modèle : ' + error.message, 'error'); return }
     toast('Modèle sauvegardé')
     setShowModeleForm(false)
     setModeleNom(''); setModeleContenu('')
@@ -422,7 +424,8 @@ export default function DossiersPage() {
   }
 
   async function supprimerModele(id: string) {
-    await supabase.from('modeles_relance').delete().eq('id', id)
+    const { error } = await supabase.from('modeles_relance').delete().eq('id', id)
+    if (error) { toast('Erreur de suppression du modèle : ' + error.message, 'error'); return }
     toast('Modèle supprimé', 'warning')
     charger()
   }
@@ -443,32 +446,17 @@ export default function DossiersPage() {
 
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
-      <AnimatePresence>
-        {showSearch && <GlobalSearch onClose={() => setShowSearch(false)} />}
-      </AnimatePresence>
       <PageHeader
         titre="Dossiers Fiscaux"
         sousTitre="Suivi des obligations fiscales — OTR Togo"
         imageUrl="https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=1200&q=80"
         bouton={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSearch(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
-              style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span className="hidden md:inline text-xs opacity-80">Ctrl+K</span>
-            </button>
-            <motion.button onClick={() => ouvrirFormulaire()}
-              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              className="px-4 py-2 rounded-xl text-white font-medium shadow-lg text-sm"
-              style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
-              + Nouveau
-            </motion.button>
-          </div>
+          <motion.button onClick={() => ouvrirFormulaire()}
+            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            className="px-4 py-2 rounded-xl text-white font-medium shadow-lg text-sm"
+            style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+            + Nouveau
+          </motion.button>
         }
       />
 
@@ -637,32 +625,6 @@ export default function DossiersPage() {
                   className="text-gray-400 hover:text-gray-600 text-xl flex-shrink-0">✕</button>
               </div>
 
-              {/* Onglets panel */}
-              <div className="flex gap-2 mb-4 border-b border-gray-100 pb-3">
-                {[
-                  { key: 'relance', label: 'Relance & Documents' },
-                  { key: 'commentaires', label: 'Commentaires' },
-                  { key: 'historique', label: 'Historique statuts' },
-                ].map(o => (
-                  <button key={o.key} onClick={() => setPanelOnglet(o.key as any)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-                    style={panelOnglet === o.key
-                      ? { background: '#2d6a4f', color: 'white' }
-                      : { background: '#f3f4f6', color: '#6b7280' }}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-
-              {panelOnglet === 'commentaires' && (
-                <DossierCommentaires dossierId={dossierActif.id} />
-              )}
-
-              {panelOnglet === 'historique' && (
-                <HistoriqueStatuts dossierId={dossierActif.id} />
-              )}
-
-              {panelOnglet === 'relance' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Upload PDF drag & drop + multi-fichiers */}
                 <div>
@@ -753,7 +715,7 @@ export default function DossiersPage() {
 
                 {/* Relance IA */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Relance IA ✦</h3>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Relance IA</h3>
 
                   {/* Canal selector */}
                   <div className="flex gap-2 mb-3">
@@ -823,7 +785,6 @@ export default function DossiersPage() {
                   </AnimatePresence>
                 </div>
               </div>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -930,7 +891,7 @@ export default function DossiersPage() {
                           </td>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-1.5">
-                              <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id); setPanelOnglet('relance') }}
+                              <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id) }}
                                 className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                                 Gérer
                               </button>
@@ -974,7 +935,7 @@ export default function DossiersPage() {
                           Échéance : {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
                         </p>
                         <div className="flex gap-1.5">
-                          <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id); setPanelOnglet('relance') }}
+                          <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id) }}
                             className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                             Gérer
                           </button>

@@ -49,8 +49,9 @@ export default function ClientsPage() {
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    const { data } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
-    setClients(data || [])
+    const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false })
+    if (error) toast('Erreur de chargement des clients : ' + error.message, 'error')
+    else setClients(data || [])
     setLoading(false)
   }
 
@@ -71,11 +72,13 @@ export default function ClientsPage() {
     setSaving(true)
     const payload = { raison_sociale, nif, regime_fiscal, secteur_activite, email_contact, telephone }
     if (clientEnEdition) {
-      await supabase.from('clients').update(payload).eq('id', clientEnEdition.id)
+      const { error } = await supabase.from('clients').update(payload).eq('id', clientEnEdition.id)
+      if (error) { toast('Erreur : ' + error.message, 'error'); setSaving(false); return }
       toast('Client modifié avec succès')
     } else {
       const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('clients').insert({ ...payload, collaborateur_id: user?.id })
+      const { error } = await supabase.from('clients').insert({ ...payload, collaborateur_id: user?.id })
+      if (error) { toast('Erreur : ' + error.message, 'error'); setSaving(false); return }
       toast('Client créé avec succès')
     }
     setShowForm(false); setClientEnEdition(null); charger(); setSaving(false)
@@ -84,7 +87,8 @@ export default function ClientsPage() {
   async function supprimerClient() {
     if (!clientASupprimer) return
     setSupprimant(true)
-    await supabase.from('clients').delete().eq('id', clientASupprimer.id)
+    const { error } = await supabase.from('clients').delete().eq('id', clientASupprimer.id)
+    if (error) { toast('Erreur de suppression : ' + error.message, 'error'); setSupprimant(false); return }
     toast('Client supprimé', 'error')
     setClientASupprimer(null); charger(); setSupprimant(false)
   }
