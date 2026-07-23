@@ -54,5 +54,13 @@ export async function GET(request: NextRequest) {
     avatar_url: meta?.avatar_url || meta?.picture || null,
   })
 
+  // Détecter nouvel utilisateur Google : created_at ≈ now (< 30s)
+  const createdAt = new Date(data.user.created_at).getTime()
+  const isNewUser = Date.now() - createdAt < 30_000
+
+  if (isNewUser) {
+    return NextResponse.redirect(`${origin}/auth?welcome=1`)
+  }
+
   return NextResponse.redirect(`${origin}${next}`)
 }
