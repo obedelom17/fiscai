@@ -282,7 +282,7 @@ export default function AuthPage() {
                 transition={{ duration: 0.2 }}
                 className="mb-6">
                 <h2 className="text-xl font-bold text-gray-800">
-                  {mode === 'connexion' ? 'Bon retour 👋' : 'Créer un compte'}
+                  {mode === 'connexion' ? 'Bon retour ' : 'Créer un compte'}
                 </h2>
                 <p className="text-gray-400 text-sm mt-0.5">
                   {mode === 'connexion'
