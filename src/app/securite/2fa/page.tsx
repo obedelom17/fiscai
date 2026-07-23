@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -18,27 +18,12 @@ export default function TwoFactorPage() {
   const [erreur, setErreur] = useState('')
   const [dejaActif, setDejaActif] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [sessionOk, setSessionOk] = useState(false)
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
   const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
-    if (!qrCode || !qrCanvasRef.current) return
-    import('qrcode').then((QRLib: typeof import('qrcode')) => {
-      QRLib.toCanvas(qrCanvasRef.current!, qrCode, { width: 180, margin: 2 })
-    })
-  }, [qrCode])
-
-  useEffect(() => {
-    // Vérifier la session d'abord, puis le statut MFA
-    supabase.auth.getSession().then(({ data: sessionData }: { data: { session: import('@supabase/supabase-js').Session | null } }) => {
-      const session = sessionData.session
-      if (!session) {
-        router.push('/auth')
-        return
-      }
-      setSessionOk(true)
+    supabase.auth.getSession().then(({ data: sessionData }) => {
+      if (!sessionData.session) { router.push('/auth'); return }
       verifierStatut()
     })
   }, [])
@@ -47,40 +32,34 @@ export default function TwoFactorPage() {
     try {
       const { data } = await supabase.auth.mfa.listFactors()
       const facteur = data?.totp?.find((f: any) => f.status === 'verified')
-      if (facteur) {
-        setDejaActif(true)
-        setFactorId(facteur.id)
-      }
-    } catch (e) {
-      // Ignorer les erreurs MFA non critiques
-    }
+      if (facteur) { setDejaActif(true); setFactorId(facteur.id) }
+    } catch (e) {}
     setEtape('setup')
   }
 
   async function activerMFA() {
     setLoading(true)
     setErreur('')
-
     try {
-      // Supprimer les facteurs non vérifiés existants
       const { data: factors } = await supabase.auth.mfa.listFactors()
-      // Supprimer tous les facteurs unverified (bloquants)
       const toClean = factors?.totp?.filter((f: any) => f.status === 'unverified') || []
       await Promise.all(toClean.map((f: any) => supabase.auth.mfa.unenroll({ factorId: f.id })))
 
-      // Forcer un nom unique pour éviter le conflit "already exists"
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
         issuer: 'FiscAl',
         friendlyName: `FiscAl-${Date.now()}`
       })
       if (error) { setErreur(error.message); setLoading(false); return }
-      setQrCode(data.totp.qr_code)
+
+      // On utilise l'URL TOTP directement — pas le QR SVG de Supabase
+      const totpUri = `otpauth://totp/FiscAl:${encodeURIComponent((await supabase.auth.getUser()).data.user?.email || '')}?secret=${data.totp.secret}&issuer=FiscAl`
+      setQrCode(totpUri)
       setSecret(data.totp.secret)
       setFactorId(data.id)
       setEtape('scan')
     } catch (e: any) {
-      setErreur(e.message || 'Erreur lors de l\'activation')
+      setErreur(e.message || "Erreur lors de l'activation")
     }
     setLoading(false)
   }
@@ -89,16 +68,11 @@ export default function TwoFactorPage() {
     if (code.length < 6) return
     setLoading(true)
     setErreur('')
-
     try {
       const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId })
       if (ce) { setErreur(ce.message); setLoading(false); return }
 
-      const { error } = await supabase.auth.mfa.verify({
-        factorId,
-        challengeId: challenge.id,
-        code
-      })
+      const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code })
       if (error) { setErreur('Code incorrect. Vérifiez votre application et réessayez.'); setLoading(false); return }
 
       await supabase.auth.refreshSession()
@@ -113,23 +87,15 @@ export default function TwoFactorPage() {
     if (codeDesactiver.length < 6) return
     setLoading(true)
     setErreur('')
-
     try {
       const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId })
       if (ce) { setErreur(ce.message); setLoading(false); return }
 
-      const { error: ve } = await supabase.auth.mfa.verify({
-        factorId,
-        challengeId: challenge.id,
-        code: codeDesactiver
-      })
+      const { error: ve } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code: codeDesactiver })
       if (ve) { setErreur('Code incorrect'); setLoading(false); return }
 
       await supabase.auth.mfa.unenroll({ factorId })
-      setDejaActif(false)
-      setEtape('setup')
-      setCodeDesactiver('')
-      setFactorId('')
+      setDejaActif(false); setEtape('setup'); setCodeDesactiver(''); setFactorId('')
     } catch (e: any) {
       setErreur(e.message || 'Erreur lors de la désactivation')
     }
@@ -142,13 +108,14 @@ export default function TwoFactorPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Écran de chargement initial
+  const qrImageUrl = qrCode
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${encodeURIComponent(qrCode)}`
+    : ''
+
   if (etape === 'loading') return (
     <div className="min-h-screen flex items-center justify-center"
       style={{ background: 'linear-gradient(135deg, #0f2318 0%, #1a3c2e 50%, #2d6a4f 100%)' }}>
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         className="w-10 h-10 rounded-full border-2"
         style={{ borderColor: '#e8a317', borderTopColor: 'transparent' }} />
     </div>
@@ -160,7 +127,6 @@ export default function TwoFactorPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
 
-        {/* Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3"
             style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
@@ -177,9 +143,7 @@ export default function TwoFactorPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: '#f0f9f4' }}>
               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#2d6a4f' }} />
-              <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>
-                Le 2FA est actif sur votre compte
-              </p>
+              <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>Le 2FA est actif sur votre compte</p>
             </div>
             <div className="flex gap-3">
               <motion.button onClick={() => setEtape('desactiver')}
@@ -199,14 +163,11 @@ export default function TwoFactorPage() {
         {/* Désactiver 2FA */}
         {etape === 'desactiver' && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-500">
-              Entrez le code de votre application pour désactiver le 2FA.
-            </p>
+            <p className="text-sm text-gray-500">Entrez le code de votre application pour désactiver le 2FA.</p>
             <input type="text" value={codeDesactiver}
               onChange={e => setCodeDesactiver(e.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={e => e.key === 'Enter' && desactiverMFA()}
-              placeholder="000000" maxLength={6}
-              autoFocus
+              placeholder="000000" maxLength={6} autoFocus
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
             {erreur && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{erreur}</p>}
             <div className="flex gap-3">
@@ -229,7 +190,7 @@ export default function TwoFactorPage() {
           <div className="space-y-4">
             <div className="p-4 rounded-xl border border-gray-100" style={{ background: '#f8fafb' }}>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Le 2FA ajoute une couche de sécurité. À chaque connexion vous devrez entrer un code de votre application d'authentification.
+                Le 2FA ajoute une couche de sécurité. À chaque connexion vous devrez entrer un code généré par votre application.
               </p>
             </div>
             <div className="space-y-1.5">
@@ -261,19 +222,25 @@ export default function TwoFactorPage() {
         {/* Scanner QR */}
         {etape === 'scan' && (
           <div className="space-y-4">
-            <p className="text-sm font-semibold text-gray-700">
-              1. Scannez ce QR code avec votre application
-            </p>
+            <p className="text-sm font-semibold text-gray-700">1. Scannez ce QR code avec votre application</p>
+
             <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-200">
-              {qrCode ? (
-                <canvas ref={qrCanvasRef} width={180} height={180} />
+              {qrImageUrl ? (
+                <img
+                  src={qrImageUrl}
+                  alt="QR Code 2FA"
+                  width={200}
+                  height={200}
+                  className="rounded-xl"
+                />
               ) : (
-                <div className="w-[180px] h-[180px] flex items-center justify-center">
+                <div className="w-[200px] h-[200px] flex items-center justify-center">
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                     className="w-8 h-8 rounded-full border-2" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
                 </div>
               )}
             </div>
+
             <div className="p-3 rounded-xl flex items-center justify-between gap-3" style={{ background: '#f8fafb' }}>
               <div className="min-w-0">
                 <p className="text-xs text-gray-500 mb-1">Code manuel :</p>
@@ -287,14 +254,12 @@ export default function TwoFactorPage() {
                 {copied ? '✓ Copié' : 'Copier'}
               </button>
             </div>
-            <p className="text-sm font-semibold text-gray-700">
-              2. Entrez le code à 6 chiffres
-            </p>
+
+            <p className="text-sm font-semibold text-gray-700">2. Entrez le code à 6 chiffres</p>
             <input type="text" value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={e => e.key === 'Enter' && verifierCode()}
-              placeholder="000000" maxLength={6}
-              autoFocus
+              placeholder="000000" maxLength={6} autoFocus
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
             {erreur && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{erreur}</p>}
             <motion.button onClick={verifierCode} disabled={loading || code.length < 6}
