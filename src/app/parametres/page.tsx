@@ -24,6 +24,12 @@ export default function ParametresPage() {
   const [msgProfil, setMsgProfil] = useState('')
   const [msgEmail, setMsgEmail] = useState('')
   const [msgPassword, setMsgPassword] = useState('')
+  const [mfaActif, setMfaActif] = useState(false)
+  const [mfaFactorId, setMfaFactorId] = useState('')
+  const [desactivant2FA, setDesactivant2FA] = useState(false)
+  const [code2FA, setCode2FA] = useState('')
+  const [afficherDesactiver, setAfficherDesactiver] = useState(false)
+  const [erreur2FA, setErreur2FA] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const router = useRouter()
@@ -40,6 +46,36 @@ export default function ParametresPage() {
       setAvatarUrl(data.avatar_url)
     }
     setLoading(false)
+
+    // Charger statut MFA + nettoyer les facteurs unverified bloquants
+    try {
+      const { data: mfaData } = await supabase.auth.mfa.listFactors()
+      const unverified = mfaData?.totp?.filter((f: any) => f.status === 'unverified') || []
+      for (const f of unverified) { await supabase.auth.mfa.unenroll({ factorId: f.id }) }
+      const verified = mfaData?.totp?.find((f: any) => f.status === 'verified')
+      if (verified) { setMfaActif(true); setMfaFactorId(verified.id) }
+    } catch (_) {}
+  }
+
+
+  async function desactiverMFA() {
+    if (code2FA.length < 6) return
+    setDesactivant2FA(true)
+    setErreur2FA('')
+    try {
+      const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId })
+      if (ce) { setErreur2FA(ce.message); setDesactivant2FA(false); return }
+      const { error: ve } = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: challenge.id, code: code2FA })
+      if (ve) { setErreur2FA('Code incorrect'); setDesactivant2FA(false); return }
+      await supabase.auth.mfa.unenroll({ factorId: mfaFactorId })
+      setMfaActif(false)
+      setMfaFactorId('')
+      setAfficherDesactiver(false)
+      setCode2FA('')
+    } catch (e: any) {
+      setErreur2FA(e.message || 'Erreur')
+    }
+    setDesactivant2FA(false)
   }
 
   async function uploadAvatar(file: File) {
@@ -296,18 +332,64 @@ export default function ParametresPage() {
     <p className="text-green-300 text-xs mt-0.5">Renforcez la sécurité de votre compte</p>
   </div>
   <div className="p-6">
-    <p className="text-sm text-gray-500 mb-4">
-      Activez le 2FA pour protéger votre compte avec une application d'authentification (Google Authenticator, Authy...).
-    </p>
-    <motion.button
-      onClick={() => router.push('/securite/2fa')}
-      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-      className="px-6 py-2.5 rounded-xl text-white text-sm font-medium shadow-md"
-      style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-      Gérer le 2FA
-    </motion.button>
+    {mfaActif ? (
+      <>
+        <div className="flex items-center gap-3 p-3 rounded-xl mb-4" style={{ background: '#f0f9f4' }}>
+          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#2d6a4f' }} />
+          <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>2FA actif sur votre compte</p>
+        </div>
+        {!afficherDesactiver ? (
+          <motion.button
+            onClick={() => { setAfficherDesactiver(true); setErreur2FA('') }}
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            className="px-6 py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-600 hover:bg-red-50">
+            Désactiver le 2FA
+          </motion.button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">Entrez le code de votre application pour confirmer :</p>
+            <input
+              type="text"
+              value={code2FA}
+              onChange={e => setCode2FA(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onKeyDown={e => e.key === 'Enter' && desactiverMFA()}
+              placeholder="000000"
+              maxLength={6}
+              autoFocus
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-red-400" />
+            {erreur2FA && <p className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-xl">{erreur2FA}</p>}
+            <div className="flex gap-3">
+              <motion.button onClick={desactiverMFA} disabled={desactivant2FA || code2FA.length < 6}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-red-600 text-white disabled:opacity-50">
+                {desactivant2FA ? 'Désactivation...' : 'Confirmer'}
+              </motion.button>
+              <motion.button onClick={() => { setAfficherDesactiver(false); setCode2FA(''); setErreur2FA('') }}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600">
+                Annuler
+              </motion.button>
+            </div>
+          </div>
+        )}
+      </>
+    ) : (
+      <>
+        <p className="text-sm text-gray-500 mb-4">
+          Activez le 2FA pour protéger votre compte avec une application d'authentification (Google Authenticator, Authy...).
+        </p>
+        <motion.button
+          onClick={() => router.push('/securite/2fa')}
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+          className="px-6 py-2.5 rounded-xl text-white text-sm font-medium shadow-md"
+          style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+          Activer le 2FA
+        </motion.button>
+      </>
+    )}
   </div>
 </motion.div>
+
 
         {/* Danger zone */}
         <motion.div
