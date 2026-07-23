@@ -25,8 +25,8 @@ export default function TwoFactorPage() {
 
   useEffect(() => {
     if (!qrCode || !qrCanvasRef.current) return
-    import('qrcode').then(QRLib => {
-      QRLib.toCanvas(qrCanvasRef.current, qrCode, { width: 180, margin: 2 })
+    import('qrcode').then((QRLib: typeof import('qrcode')) => {
+      QRLib.toCanvas(qrCanvasRef.current!, qrCode, { width: 180, margin: 2 })
     })
   }, [qrCode])
 
