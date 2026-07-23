@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import GlobalSearch from '@/components/GlobalSearch'
+import { PageLoader } from '@/components/Spinner'
+import { formatDateFr } from '@/lib/format'
 
 type Dossier = {
   id: string
@@ -122,11 +124,7 @@ export default function DashboardHome() {
     COMMENTAIRE: 'Commentaire ajouté',
   }
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageLoader />
 
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
@@ -267,7 +265,7 @@ export default function DashboardHome() {
                           <p className={`text-xs font-semibold ${diff <= 0 ? 'text-red-600' : 'text-yellow-600'}`}>
                             {diff <= 0 ? 'En retard' : `J-${diff}`}
                           </p>
-                          <p className="text-xs text-gray-400">{ech.toLocaleDateString('fr-FR')}</p>
+                          <p className="text-xs text-gray-400">{formatDateFr(ech)}</p>
                         </div>
                       </motion.div>
                     )
@@ -314,7 +312,7 @@ export default function DashboardHome() {
                         <p className="text-xs text-gray-400 truncate">{r.dossiers_fiscaux?.type_impot} {r.dossiers_fiscaux?.periode_annee}</p>
                       </div>
                       <p className="text-xs text-gray-400 flex-shrink-0">
-                        {new Date(r.date_envoi).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                        {formatDateFr(r.date_envoi, { day: '2-digit', month: 'short' })}
                       </p>
                     </div>
                   ))}
@@ -350,7 +348,7 @@ export default function DashboardHome() {
                         <p className="text-xs text-gray-500 truncate">{log.details}</p>
                       </div>
                       <p className="text-xs text-gray-400 flex-shrink-0 whitespace-nowrap">
-                        {new Date(log.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                        {formatDateFr(log.created_at, { day: '2-digit', month: 'short' })}
                       </p>
                     </div>
                   ))}

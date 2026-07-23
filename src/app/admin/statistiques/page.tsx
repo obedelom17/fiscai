@@ -7,6 +7,9 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { PageLoader } from '@/components/Spinner'
+import { TYPES_IMPOT } from '@/lib/constants'
+import { formatDateFr } from '@/lib/format'
 
 type Dossier = {
   id: string
@@ -62,7 +65,7 @@ export default function StatistiquesPage() {
     { name: 'En retard', value: enRetard },
   ]
 
-  const types = ['TVA', 'IRPP', 'IS', 'acompte']
+  const types = TYPES_IMPOT
   const dataTypes = types.map(t => ({
     name: t,
     'En attente': dossiers.filter(d => d.type_impot === t && d.statut === 'en_attente').length,
@@ -120,15 +123,7 @@ export default function StatistiquesPage() {
     ? Math.round(dataReactivite.reduce((acc, c) => acc + c.delai, 0) / dataReactivite.length)
     : null
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-10 h-10 rounded-full border-2"
-        style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageLoader spinnerClassName="w-10 h-10" />
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
@@ -438,7 +433,7 @@ export default function StatistiquesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-red-600">
-                        {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
+                        {formatDateFr(d.date_echeance)}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">

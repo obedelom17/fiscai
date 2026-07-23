@@ -6,6 +6,7 @@ import PageHeader from '@/components/PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
+import { formatDateFr } from '@/lib/format'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
@@ -36,7 +37,7 @@ CLIENTS (${clients?.length || 0}) :
 ${clients?.map((c: any) => `- ${c.raison_sociale} (NIF: ${c.nif}, Régime: ${c.regime_fiscal})`).join('\n') || 'Aucun'}
 
 DOSSIERS FISCAUX RÉCENTS :
-${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} | ${d.statut} | Échéance: ${new Date(d.date_echeance).toLocaleDateString('fr-FR')}`).join('\n') || 'Aucun'}
+${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_impot} | ${d.statut} | Échéance: ${formatDateFr(d.date_echeance)}`).join('\n') || 'Aucun'}
 `
       setContexte(ctx)
     } catch (e) {

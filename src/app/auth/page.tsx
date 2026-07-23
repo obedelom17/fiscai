@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 import { upsertCollaborateurProfile, resolveCollaborateurRole, needsMfaVerification, getVerifiedTotpFactor } from '@/lib/collaborateur-profile'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Spinner } from '@/components/Spinner'
 
 export default function AuthPage() {
   const [email, setEmail] = useState('')
@@ -540,7 +541,7 @@ export default function AuthPage() {
                   style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
                   {loading
                     ? <span className="flex items-center justify-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <Spinner className="w-4 h-4" color="white" />
                         Chargement...
                       </span>
                     : mode === 'connexion' ? 'Se connecter' : "S'inscrire"}
