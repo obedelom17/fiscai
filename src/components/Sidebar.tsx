@@ -6,15 +6,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRole } from '@/lib/useRole'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useToast } from '@/components/Toast'
 
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const { isAdmin, loading } = useRole()
+  const { toast } = useToast()
   const [user, setUser] = useState<{ prenom: string; nom: string; email: string; avatar_url: string | null } | null>(null)
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: string }[]>([])
-  const [showNotifs, setShowNotifs] = useState(false)
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function Sidebar() {
         }
       })
       setNotifications(notifs)
+      notifs.forEach(n => toast(n.message, n.type === 'retard' ? 'error' : 'warning'))
     }
     chargerNotifications()
     const channel = supabase.channel('dossiers-changes')
@@ -113,7 +115,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-hidden">
         {!loading && liens.map((lien, i) => {
           const actif = pathname === lien.href
           return (
@@ -135,64 +137,18 @@ export default function Sidebar() {
           <div className="flex items-center justify-between px-3 mb-2">
             <p className="text-xs text-white/30 uppercase tracking-wider">Compte</p>
             {/* Cloche */}
-            <div className="relative">
-              <motion.button onClick={() => setShowNotifs(!showNotifs)} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                className="relative p-1.5 rounded-lg"
-                style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}>
-                <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {notifications.length > 0 && (
-                  <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
-                    style={{ background: '#dc2626', fontSize: '9px' }}>
-                    {notifications.length}
-                  </motion.span>
-                )}
-              </motion.button>
-
-              <AnimatePresence>
-                {showNotifs && <div className="fixed inset-0 z-40" onClick={() => setShowNotifs(false)} />}
-                {showNotifs && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                    transition={{ duration: 0.15 }}
-                    className="fixed w-72 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
-                    style={{ background: 'white', bottom: '120px', left: '16px' }}>
-                    <div className="px-4 py-3 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-                      <p className="text-sm font-bold text-white">Notifications</p>
-                      <p className="text-xs text-green-300 mt-0.5">{notifications.length} alerte(s)</p>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="px-4 py-6 text-center"><p className="text-sm text-gray-400">Aucune alerte</p></div>
-                      ) : notifications.map((n, i) => (
-                        <div key={n.id} className="px-4 py-3 border-b border-gray-50 flex items-start gap-3">
-                          <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: n.type === 'retard' ? '#dc2626' : '#d97706' }} />
-                          <div>
-                            <p className="text-xs font-medium text-gray-800">{n.message}</p>
-                            <p className="text-xs mt-0.5" style={{ color: n.type === 'retard' ? '#dc2626' : '#d97706' }}>
-                              {n.type === 'retard' ? 'En retard' : 'Échéance proche'}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {notifications.length > 0 && (
-                      <div className="px-4 py-3">
-                        <Link href="/dashboard/dossiers" onClick={() => setShowNotifs(false)}
-                          className="block text-center text-xs font-medium py-2 rounded-xl"
-                          style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
-                          Voir tous les dossiers
-                        </Link>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <Link href="/dashboard/dossiers" className="relative p-1.5 rounded-lg inline-flex"
+              style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}>
+              <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {notifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
+                  style={{ background: '#dc2626', fontSize: '9px' }}>
+                  {notifications.length}
+                </span>
+              )}
+            </Link>
           </div>
 
           <motion.div whileHover={{ x: 3 }}>
