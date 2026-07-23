@@ -2,8 +2,9 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import { upsertCollaborateurProfile, resolveCollaborateurRole, needsMfaVerification, getVerifiedTotpFactor } from '@/lib/collaborateur-profile'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -19,9 +20,31 @@ export default function AuthPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [proposer2FA, setProposer2FA] = useState(false)
+  const [needsMFA, setNeedsMFA] = useState(false)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaFactorId, setMfaFactorId] = useState('')
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    async function initAuthState() {
+      const params = new URLSearchParams(window.location.search)
+
+      if (params.get('mfa') === '1') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        if (await needsMfaVerification(supabase)) {
+          const factor = await getVerifiedTotpFactor(supabase)
+          if (factor) {
+            setMfaFactorId(factor.id)
+            setNeedsMFA(true)
+          }
+        }
+      }
+    }
+    initAuthState()
+  }, [])
 
   function changerMode(m: 'connexion' | 'inscription') {
     setMode(m)
@@ -47,8 +70,49 @@ export default function AuthPage() {
     if (!email || !password) { setErreur('Email et mot de passe requis'); return }
     setLoading(true); setErreur('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setErreur('Email ou mot de passe incorrect')
-    else router.push('/dashboard')
+    if (error) {
+      setErreur('Email ou mot de passe incorrect')
+      setLoading(false)
+      return
+    }
+
+    if (await needsMfaVerification(supabase)) {
+      const factor = await getVerifiedTotpFactor(supabase)
+      if (factor) {
+        setMfaFactorId(factor.id)
+        setNeedsMFA(true)
+        setLoading(false)
+        return
+      }
+    }
+
+    router.push('/dashboard')
+    setLoading(false)
+  }
+
+  async function handleMfaVerification() {
+    if (mfaCode.length < 6) return
+    setLoading(true); setErreur('')
+    try {
+      const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId })
+      if (ce) { setErreur(ce.message); setLoading(false); return }
+
+      const { error: ve } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: challenge.id,
+        code: mfaCode,
+      })
+      if (ve) {
+        setErreur('Code incorrect. Vérifiez votre application et réessayez.')
+        setLoading(false)
+        return
+      }
+
+      await supabase.auth.refreshSession()
+      router.push('/dashboard')
+    } catch (e: unknown) {
+      setErreur(e instanceof Error ? e.message : 'Erreur de vérification')
+    }
     setLoading(false)
   }
 
@@ -61,8 +125,7 @@ export default function AuthPage() {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) { setErreur(error.message); setLoading(false); return }
     if (data.user) {
-      const { count } = await supabase.from('collaborateurs').select('*', { count: 'exact', head: true })
-      const role = (count === 0 || count === null) ? 'admin' : 'collaborateur'
+      const role = await resolveCollaborateurRole(supabase)
 
       // Upload avatar si fourni
       let avatarUrl: string | null = null
@@ -76,10 +139,11 @@ export default function AuthPage() {
         }
       }
 
-      const { error: insertError } = await supabase.from('collaborateurs').insert({
+      const { error: profileError } = await upsertCollaborateurProfile(supabase, {
         id: data.user.id, nom, prenom, email, role, avatar_url: avatarUrl
       })
-      if (insertError) { setErreur('Erreur création profil: ' + insertError.message); setLoading(false); return }
+      if (profileError) { setErreur('Erreur création profil: ' + profileError.message); setLoading(false); return }
+      window.history.replaceState({}, '', '/auth?welcome=1')
       setProposer2FA(true)
     }
     setLoading(false)
@@ -92,6 +156,69 @@ export default function AuthPage() {
     })
     if (error) setErreur('Erreur Google: ' + error.message)
   }
+
+  // Écran vérification 2FA à la connexion
+  if (needsMFA) return (
+    <div className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: 'linear-gradient(135deg, #0f2318 0%, #1a3c2e 50%, #2d6a4f 100%)' }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
+
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5"
+            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-black text-gray-800 mb-2">Vérification 2FA</h2>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            Entrez le code à 6 chiffres généré par votre application d'authentification.
+          </p>
+        </div>
+
+        <input
+          type="text"
+          value={mfaCode}
+          onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          onKeyDown={e => e.key === 'Enter' && handleMfaVerification()}
+          placeholder="000000"
+          maxLength={6}
+          autoFocus
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
+        />
+
+        {erreur && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3 mb-4">
+            {erreur}
+          </div>
+        )}
+
+        <motion.button
+          onClick={handleMfaVerification}
+          disabled={loading || mfaCode.length < 6}
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+          className="w-full py-3.5 rounded-xl text-white font-bold text-sm shadow-lg disabled:opacity-50 mb-3"
+          style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+          {loading ? 'Vérification...' : 'Valider'}
+        </motion.button>
+
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut()
+            setNeedsMFA(false)
+            setMfaCode('')
+            setMfaFactorId('')
+            setErreur('')
+          }}
+          className="w-full py-3 rounded-xl text-sm font-medium border border-gray-200 text-gray-500 hover:bg-gray-50">
+          Retour à la connexion
+        </button>
+      </motion.div>
+    </div>
+  )
 
   // Écran proposition 2FA après inscription
   if (proposer2FA) return (
