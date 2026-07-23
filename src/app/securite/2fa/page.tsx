@@ -57,15 +57,15 @@ export default function TwoFactorPage() {
     try {
       // Supprimer les facteurs non vérifiés existants
       const { data: factors } = await supabase.auth.mfa.listFactors()
-      const unverified = factors?.totp?.filter((f: any) => f.status === 'unverified') || []
-      for (const f of unverified) {
-        await supabase.auth.mfa.unenroll({ factorId: f.id })
-      }
+      // Supprimer tous les facteurs unverified (bloquants)
+      const toClean = factors?.totp?.filter((f: any) => f.status === 'unverified') || []
+      await Promise.all(toClean.map((f: any) => supabase.auth.mfa.unenroll({ factorId: f.id })))
 
+      // Forcer un nom unique pour éviter le conflit "already exists"
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
         issuer: 'FiscAl',
-        friendlyName: 'FiscAl Authenticator'
+        friendlyName: `FiscAl-${Date.now()}`
       })
       if (error) { setErreur(error.message); setLoading(false); return }
       setQrCode(data.totp.qr_code)
