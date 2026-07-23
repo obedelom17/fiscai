@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { PageLoader } from '@/components/Spinner'
+import { formatDateFr } from '@/lib/format'
 
 type Dossier = {
   id: string
@@ -71,11 +73,7 @@ export default function DashboardHome() {
     { label: 'Statistiques', href: '/admin/statistiques', desc: 'Tableau de bord', color: '#e8a317', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
   ]
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageLoader />
 
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
@@ -191,7 +189,7 @@ export default function DashboardHome() {
                         </div>
                       </div>
                       <p className="text-xs font-semibold text-red-600 flex-shrink-0 ml-2">
-                        {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
+                        {formatDateFr(d.date_echeance)}
                       </p>
                     </motion.div>
                   ))}

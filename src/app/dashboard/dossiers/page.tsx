@@ -6,7 +6,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import PageHeader from '@/components/PageHeader'
 import { useToast } from '@/components/Toast'
+import { Spinner } from '@/components/Spinner'
 import { motion, AnimatePresence } from 'framer-motion'
+import { STATUT_BADGE_CLASSES, STATUT_LABELS, MOIS } from '@/lib/constants'
+import { formatDateFr } from '@/lib/format'
 
 type Client = { id: string; raison_sociale: string; email_contact: string; telephone?: string }
 type Dossier = {
@@ -50,20 +53,6 @@ type ModeleRelance = {
   contenu: string
   nom: string
 }
-
-const STATUT_COULEURS: Record<string, string> = {
-  en_attente: 'bg-yellow-100 text-yellow-700',
-  recu: 'bg-blue-100 text-blue-700',
-  valide: 'bg-green-100 text-green-700',
-  televerse_otr: 'bg-purple-100 text-purple-700',
-}
-const STATUT_LABELS: Record<string, string> = {
-  en_attente: 'En attente',
-  recu: 'Reçu',
-  valide: 'Validé',
-  televerse_otr: 'Téléversé OTR',
-}
-const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
 
 export default function DossiersPage() {
   const { toast } = useToast()
@@ -320,7 +309,7 @@ export default function DossiersPage() {
           .replace('{client}', dossier.clients.raison_sociale)
           .replace('{type_impot}', dossier.type_impot)
           .replace('{periode}', dossier.periode_mois ? `${MOIS[dossier.periode_mois - 1]} ${dossier.periode_annee}` : String(dossier.periode_annee))
-          .replace('{echeance}', new Date(dossier.date_echeance).toLocaleDateString('fr-FR'))
+          .replace('{echeance}', formatDateFr(dossier.date_echeance))
         setEmailContenu(contenu)
         setGeneratingEmail(false)
         return
@@ -332,7 +321,7 @@ export default function DossiersPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: `Rédige un ${isWA ? 'message WhatsApp' : 'email'} de relance professionnel en français pour demander les documents fiscaux manquants à l'entreprise "${dossier.clients.raison_sociale}". Il s'agit de leur déclaration ${dossier.type_impot}${dossier.periode_mois ? ` du mois ${MOIS[dossier.periode_mois - 1]}` : ''} ${dossier.periode_annee}. L'échéance OTR est le ${new Date(dossier.date_echeance).toLocaleDateString('fr-FR')}. ${isWA ? 'Format court, direct, adapté WhatsApp, sans mise en forme HTML.' : 'Sois professionnel, concis et urgent sans être agressif.'} Ne mets pas de signature.`,
+        message: `Rédige un ${isWA ? 'message WhatsApp' : 'email'} de relance professionnel en français pour demander les documents fiscaux manquants à l'entreprise "${dossier.clients.raison_sociale}". Il s'agit de leur déclaration ${dossier.type_impot}${dossier.periode_mois ? ` du mois ${MOIS[dossier.periode_mois - 1]}` : ''} ${dossier.periode_annee}. L'échéance OTR est le ${formatDateFr(dossier.date_echeance)}. ${isWA ? 'Format court, direct, adapté WhatsApp, sans mise en forme HTML.' : 'Sois professionnel, concis et urgent sans être agressif.'} Ne mets pas de signature.`,
         contexte: '',
         historique: [],
       })
@@ -591,7 +580,7 @@ export default function DossiersPage() {
                 <div>
                   <h2 className="font-bold text-gray-800">{dossierActif.clients.raison_sociale}</h2>
                   <p className="text-sm text-gray-500 mt-0.5">
-                    {dossierActif.type_impot} — {dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] + ' ' : ''}{dossierActif.periode_annee} — Échéance : {new Date(dossierActif.date_echeance).toLocaleDateString('fr-FR')}
+                    {dossierActif.type_impot} — {dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] + ' ' : ''}{dossierActif.periode_annee} — Échéance : {formatDateFr(dossierActif.date_echeance)}
                   </p>
                 </div>
                 <button onClick={() => { setDossierActif(null); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); setDocumentsActif([]) }}
@@ -723,7 +712,7 @@ export default function DossiersPage() {
                     style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
                     {generatingEmail ? (
                       <span className="flex items-center justify-center gap-2">
-                        <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <Spinner className="inline-block w-4 h-4" color="white" />
                         Génération...
                       </span>
                     ) : `Générer le message IA`}
@@ -803,7 +792,7 @@ export default function DossiersPage() {
 
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
+                <Spinner />
               </div>
             ) : dossiersFiltres.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
@@ -847,11 +836,11 @@ export default function DossiersPage() {
                           </td>
                           <td className="px-5 py-4 text-sm">
                             <span className={estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr' ? 'text-red-600 font-semibold' : estUrgent(d.date_echeance) ? 'text-yellow-600 font-semibold' : 'text-gray-500'}>
-                              {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
+                              {formatDateFr(d.date_echeance)}
                             </span>
                           </td>
                           <td className="px-5 py-4">
-                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>{STATUT_LABELS[d.statut]}</span>
+                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${STATUT_BADGE_CLASSES[d.statut]}`}>{STATUT_LABELS[d.statut]}</span>
                           </td>
                           <td className="px-5 py-4">
                             <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value, d)}
@@ -901,11 +890,11 @@ export default function DossiersPage() {
                             {d.type_impot} — {d.periode_mois ? MOIS[d.periode_mois - 1] + ' ' : ''}{d.periode_annee}
                           </p>
                         </div>
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>{STATUT_LABELS[d.statut]}</span>
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUT_BADGE_CLASSES[d.statut]}`}>{STATUT_LABELS[d.statut]}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <p className={`text-xs font-semibold ${estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr' ? 'text-red-600' : estUrgent(d.date_echeance) ? 'text-yellow-600' : 'text-gray-500'}`}>
-                          Échéance : {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
+                          Échéance : {formatDateFr(d.date_echeance)}
                         </p>
                         <div className="flex gap-1.5">
                           <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id) }}
@@ -966,7 +955,7 @@ export default function DossiersPage() {
                             </span>
                           </td>
                           <td className="px-5 py-4 text-sm text-gray-500">
-                            {new Date(r.date_envoi).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {formatDateFr(r.date_envoi, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </td>
                           <td className="px-5 py-4 text-sm text-gray-400 max-w-xs">
                             <p className="truncate">{r.contenu_email?.substring(0, 60)}...</p>
@@ -987,7 +976,7 @@ export default function DossiersPage() {
                       </div>
                       <p className="text-xs text-gray-500 mb-1">{r.dossiers_fiscaux?.type_impot} {r.dossiers_fiscaux?.periode_annee}</p>
                       <p className="text-xs text-gray-400 truncate">{r.contenu_email?.substring(0, 80)}...</p>
-                      <p className="text-xs text-gray-400 mt-1">{new Date(r.date_envoi).toLocaleDateString('fr-FR')}</p>
+                      <p className="text-xs text-gray-400 mt-1">{formatDateFr(r.date_envoi)}</p>
                     </div>
                   ))}
                 </div>
@@ -1114,7 +1103,7 @@ export default function DossiersPage() {
                       <tr key={log.id} className="border-b border-gray-50 hover:bg-green-50 transition-colors"
                         style={{ background: i % 2 === 0 ? 'white' : '#fafffe' }}>
                         <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
-                          {new Date(log.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {formatDateFr(log.created_at, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </td>
                         <td className="px-5 py-3 text-sm">
                           <span className="font-medium text-gray-700">

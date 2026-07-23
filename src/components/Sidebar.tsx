@@ -7,6 +7,7 @@ import { useRole } from '@/lib/useRole'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useToast } from '@/components/Toast'
+import { formatDateFr } from '@/lib/format'
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -29,7 +30,7 @@ export default function Sidebar() {
         if (ech < aujourd) {
           notifs.push({ id: d.id, message: `${d.clients?.raison_sociale} — ${d.type_impot} en retard`, type: 'retard' })
         } else if (ech <= dans5) {
-          notifs.push({ id: d.id, message: `${d.clients?.raison_sociale} — ${d.type_impot} échéance le ${ech.toLocaleDateString('fr-FR')}`, type: 'urgent' })
+          notifs.push({ id: d.id, message: `${d.clients?.raison_sociale} — ${d.type_impot} échéance le ${formatDateFr(ech)}`, type: 'urgent' })
         }
       })
       setNotifications(notifs)

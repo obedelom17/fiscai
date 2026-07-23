@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '@/components/PageHeader'
 import { useToast } from '@/components/Toast'
+import { Spinner } from '@/components/Spinner'
+import { REGIME_LABELS, REGIME_COLORS } from '@/lib/constants'
 
 type Client = {
   id: string
@@ -16,15 +18,6 @@ type Client = {
   secteur_activite: string
   email_contact: string
   telephone?: string
-}
-
-const REGIME_LABELS: Record<string, string> = {
-  RR_TVA: 'Réel avec TVA', RR_STVA: 'Réel sans TVA',
-  TPU_F: 'TPU Forfaitaire', TPU_D: 'TPU Déclaratif',
-}
-const REGIME_COLORS: Record<string, string> = {
-  RR_TVA: 'bg-blue-100 text-blue-700', RR_STVA: 'bg-purple-100 text-purple-700',
-  TPU_F: 'bg-orange-100 text-orange-700', TPU_D: 'bg-green-100 text-green-700',
 }
 
 export default function ClientsPage() {
@@ -237,7 +230,7 @@ export default function ClientsPage() {
         {/* Contenu */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
+            <Spinner />
           </div>
         ) : clientsFiltres.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">

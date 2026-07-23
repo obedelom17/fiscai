@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import PageHeader from '@/components/PageHeader'
+import { Spinner, PageLoader } from '@/components/Spinner'
 
 export default function ParametresPage() {
   const [prenom, setPrenom] = useState('')
@@ -131,13 +132,7 @@ export default function ParametresPage() {
     setSavingPassword(false)
   }
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-8 h-8 rounded-full border-2"
-        style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageLoader />
 
   return (
     <div style={{ background: '#f0f4f1' }}>
@@ -175,8 +170,7 @@ export default function ParametresPage() {
               {uploadingAvatar && (
                 <div className="absolute inset-0 rounded-2xl flex items-center justify-center"
                   style={{ background: 'rgba(0,0,0,0.5)' }}>
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    className="w-6 h-6 rounded-full border-2 border-white border-t-transparent" />
+                  <Spinner className="w-6 h-6" color="white" />
                 </div>
               )}
             </div>

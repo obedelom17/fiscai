@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import PageHeader from '@/components/PageHeader'
 import { motion, AnimatePresence } from 'framer-motion'
+import { STATUT_COULEURS, STATUT_LABELS, JOURS, MOIS_NOMS, TYPES_IMPOT } from '@/lib/constants'
+import { formatDateFr } from '@/lib/format'
 
 type Dossier = {
   id: string
@@ -16,21 +18,6 @@ type Dossier = {
   periode_annee: number
   clients: { raison_sociale: string }
 }
-
-const STATUT_COULEURS: Record<string, { bg: string; text: string; dot: string }> = {
-  en_attente: { bg: '#fef9c3', text: '#854d0e', dot: '#d97706' },
-  recu: { bg: '#dbeafe', text: '#1e40af', dot: '#3b82f6' },
-  valide: { bg: '#dcfce7', text: '#166534', dot: '#2d6a4f' },
-  televerse_otr: { bg: '#f3e8ff', text: '#6b21a8', dot: '#9333ea' },
-}
-const STATUT_LABELS: Record<string, string> = {
-  en_attente: 'En attente',
-  recu: 'Reçu',
-  valide: 'Validé',
-  televerse_otr: 'Téléversé OTR',
-}
-const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
 export default function CalendrierPage() {
   const [dossiers, setDossiers] = useState<Dossier[]>([])
@@ -144,7 +131,7 @@ export default function CalendrierPage() {
 
             {/* Filtres */}
             <div className="flex gap-2 px-4 py-3 border-b border-gray-100 overflow-x-auto">
-              {['tous', 'TVA', 'IRPP', 'IS', 'acompte'].map(t => (
+              {['tous', ...TYPES_IMPOT].map(t => (
                 <button key={t} onClick={() => setFiltreType(t)}
                   className="px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all"
                   style={filtreType === t
@@ -288,7 +275,7 @@ export default function CalendrierPage() {
                           <p className="text-xs font-bold" style={{ color: diff <= 3 ? '#dc2626' : diff <= 7 ? '#d97706' : '#2d6a4f' }}>
                             J-{diff}
                           </p>
-                          <p className="text-xs text-gray-400">{ech.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</p>
+                          <p className="text-xs text-gray-400">{formatDateFr(ech, { day: '2-digit', month: 'short' })}</p>
                         </div>
                       </div>
                     )

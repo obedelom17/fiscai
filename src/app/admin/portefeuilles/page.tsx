@@ -6,6 +6,7 @@ import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
+import { PageLoader } from '@/components/Spinner'
 
 type Collaborateur = { id: string; nom: string; prenom: string; email: string; role: string; avatar_url?: string | null }
 type Client = { id: string; raison_sociale: string; nif: string; secteur_activite: string; collaborateur_id: string | null }
@@ -48,15 +49,7 @@ export default function PortefeuillesPage() {
   charger()
 }
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-10 h-10 rounded-full border-2"
-        style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageLoader className="min-h-screen" spinnerClassName="w-10 h-10" />
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>

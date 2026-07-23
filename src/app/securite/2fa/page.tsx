@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { Spinner } from '@/components/Spinner'
 
 export default function TwoFactorPage() {
   const [etape, setEtape] = useState<'loading' | 'setup' | 'scan' | 'desactiver'>('loading')
@@ -116,9 +117,7 @@ export default function TwoFactorPage() {
   if (etape === 'loading') return (
     <div className="min-h-screen flex items-center justify-center"
       style={{ background: 'linear-gradient(135deg, #0f2318 0%, #1a3c2e 50%, #2d6a4f 100%)' }}>
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-10 h-10 rounded-full border-2"
-        style={{ borderColor: '#e8a317', borderTopColor: 'transparent' }} />
+      <Spinner className="w-10 h-10" color="#e8a317" />
     </div>
   )
 
@@ -236,8 +235,7 @@ export default function TwoFactorPage() {
                 />
               ) : (
                 <div className="w-[200px] h-[200px] flex items-center justify-center">
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    className="w-8 h-8 rounded-full border-2" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
+                  <Spinner className="w-8 h-8" />
                 </div>
               )}
             </div>

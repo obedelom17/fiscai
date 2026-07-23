@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { STATUT_LABELS, MOIS } from '@/lib/constants'
+import { formatDateFr } from '@/lib/format'
 
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
@@ -37,15 +39,7 @@ export async function GET(request: NextRequest) {
 
   if (!client) return NextResponse.json({ error: 'Client non trouvé' }, { status: 404 })
 
-  const STATUT_LABELS: Record<string, string> = {
-    en_attente: 'En attente',
-    recu: 'Reçu',
-    valide: 'Validé',
-    televerse_otr: 'Téléversé OTR',
-  }
-  const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
-
-  const now = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+  const now = formatDateFr(new Date(), { day: '2-digit', month: 'long', year: 'numeric' })
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -167,7 +161,7 @@ export async function GET(request: NextRequest) {
         <tr>
           <td><strong>${d.type_impot}</strong></td>
           <td>${d.periode_mois ? MOIS[d.periode_mois - 1] + ' ' : ''}${d.periode_annee}</td>
-          <td>${new Date(d.date_echeance).toLocaleDateString('fr-FR')}</td>
+          <td>${formatDateFr(d.date_echeance)}</td>
           <td>
             <span class="badge badge-${d.statut === 'en_attente' ? 'attente' : d.statut === 'recu' ? 'recu' : d.statut === 'valide' ? 'valide' : 'otr'}">
               ${STATUT_LABELS[d.statut] || d.statut}
@@ -192,7 +186,7 @@ export async function GET(request: NextRequest) {
       <tbody>
         ${relances.slice(0, 10).map(r => `
         <tr>
-          <td>${new Date(r.date_envoi).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+          <td>${formatDateFr(r.date_envoi, { day: '2-digit', month: 'short', year: 'numeric' })}</td>
           <td>${r.canal === 'whatsapp' ? 'WhatsApp' : 'Email'}</td>
           <td>${r.statut}</td>
         </tr>`).join('')}
