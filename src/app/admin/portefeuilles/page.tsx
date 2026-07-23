@@ -14,6 +14,8 @@ export default function PortefeuillesPage() {
   const [collaborateurs, setCollaborateurs] = useState<Collaborateur[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [confirmSupprimer, setConfirmSupprimer] = useState<string | null>(null)
+  const [supprimant, setSupprimant] = useState(false)
   const supabase = createClient()
 
   useEffect(() => { charger() }, [])
@@ -60,6 +62,27 @@ export default function PortefeuillesPage() {
   if (error) { alert('Erreur de changement de rôle : ' + error.message); return }
   charger()
 }
+
+  async function supprimerCollaborateur(collaborateurId: string) {
+    setSupprimant(true)
+    try {
+      const res = await fetch('/api/delete-account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: collaborateurId })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'Erreur lors de la suppression')
+      } else {
+        setConfirmSupprimer(null)
+        charger()
+      }
+    } catch {
+      alert('Erreur réseau')
+    }
+    setSupprimant(false)
+  }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
@@ -149,13 +172,43 @@ export default function PortefeuillesPage() {
                         </p>
                       </div>
                     </div>
-                    <select value={c.role} onChange={e => changerRole(c.id, e.target.value)}
-  className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500"
-  style={{ color: c.role === 'admin' ? '#1a3c2e' : '#6b7280' }}
-  disabled={c.role === 'admin' && collaborateurs.filter(x => x.role === 'admin').length <= 1}>
-  <option value="collaborateur">Collaborateur</option>
-  <option value="admin">Admin</option>
-</select>
+                    <div className="flex items-center gap-2">
+                      <select value={c.role} onChange={e => changerRole(c.id, e.target.value)}
+                        className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        style={{ color: c.role === 'admin' ? '#1a3c2e' : '#6b7280' }}
+                        disabled={c.role === 'admin' && collaborateurs.filter(x => x.role === 'admin').length <= 1}>
+                        <option value="collaborateur">Collaborateur</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      {confirmSupprimer === c.id ? (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => supprimerCollaborateur(c.id)}
+                            disabled={supprimant}
+                            className="text-xs px-2 py-1 rounded-lg bg-red-600 text-white disabled:opacity-50 whitespace-nowrap">
+                            {supprimant ? '...' : 'Confirmer'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmSupprimer(null)}
+                            className="text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-500">
+                            Non
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            if (c.role === 'admin' && collaborateurs.filter(x => x.role === 'admin').length <= 1) {
+                              alert('Impossible — dernier administrateur')
+                              return
+                            }
+                            setConfirmSupprimer(c.id)
+                          }}
+                          title="Supprimer ce compte"
+                          className="text-xs px-2 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-all">
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </motion.div>
                 ))}
               </AnimatePresence>

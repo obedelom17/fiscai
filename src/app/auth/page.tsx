@@ -31,6 +31,11 @@ export default function AuthPage() {
     async function initAuthState() {
       const params = new URLSearchParams(window.location.search)
 
+      if (params.get('welcome') === '1') {
+        setProposer2FA(true)
+        return
+      }
+
       if (params.get('mfa') === '1') {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
