@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { upsertCollaborateurProfile, resolveCollaborateurRole } from '@/lib/collaborateur-profile'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -36,34 +37,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth?error=exchange_failed`)
   }
 
-  // Créer profil collaborateur si Google OAuth (premier login)
-  const { data: existing } = await supabase
-    .from('collaborateurs')
-    .select('id')
-    .eq('id', data.user.id)
-    .single()
+  // Créer ou mettre à jour le profil collaborateur (Google OAuth)
+  const role = await resolveCollaborateurRole(supabase)
+  const meta = data.user.user_metadata
+  const fullName = meta?.full_name || meta?.name || ''
+  const parts = fullName.split(' ')
+  const prenom = parts[0] || ''
+  const nom = parts.slice(1).join(' ') || ''
 
-  if (!existing) {
-    const { count } = await supabase
-      .from('collaborateurs')
-      .select('*', { count: 'exact', head: true })
-
-    const role = (count === 0 || count === null) ? 'admin' : 'collaborateur'
-    const meta = data.user.user_metadata
-    const fullName = meta?.full_name || meta?.name || ''
-    const parts = fullName.split(' ')
-    const prenom = parts[0] || ''
-    const nom = parts.slice(1).join(' ') || ''
-
-    await supabase.from('collaborateurs').insert({
-      id: data.user.id,
-      nom,
-      prenom,
-      email: data.user.email,
-      role,
-      avatar_url: meta?.avatar_url || meta?.picture || null,
-    })
-  }
+  await upsertCollaborateurProfile(supabase, {
+    id: data.user.id,
+    nom,
+    prenom,
+    email: data.user.email ?? '',
+    role,
+    avatar_url: meta?.avatar_url || meta?.picture || null,
+  })
 
   return NextResponse.redirect(`${origin}${next}`)
 }
