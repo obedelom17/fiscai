@@ -22,7 +22,8 @@ export default function TwoFactorPage() {
   const router = useRouter()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: sessionData }) => {
+    supabase.auth.getSession().then(({ data }) => {
+      const sessionData = data as { session: { user: any } | null }
       if (!sessionData.session) { router.push('/auth'); return }
       verifierStatut()
     })
