@@ -37,11 +37,17 @@ export async function GET(request: NextRequest) {
   }
 
   // Créer profil collaborateur si Google OAuth (premier login)
-  const { data: existing } = await supabase
+  // PGRST116 = aucune ligne trouvée avec .single() : c'est un premier login, pas une vraie erreur.
+  const { data: existing, error: existingError } = await supabase
     .from('collaborateurs')
     .select('id')
     .eq('id', data.user.id)
     .single()
+
+  if (existingError && existingError.code !== 'PGRST116') {
+    console.error('Erreur callback — lecture profil:', existingError.message)
+    return NextResponse.redirect(`${origin}/auth?error=profile_lookup_failed`)
+  }
 
   if (!existing) {
     const { count } = await supabase
@@ -55,7 +61,7 @@ export async function GET(request: NextRequest) {
     const prenom = parts[0] || ''
     const nom = parts.slice(1).join(' ') || ''
 
-    await supabase.from('collaborateurs').insert({
+    const { error: insertError } = await supabase.from('collaborateurs').insert({
       id: data.user.id,
       nom,
       prenom,
@@ -63,6 +69,11 @@ export async function GET(request: NextRequest) {
       role,
       avatar_url: meta?.avatar_url || meta?.picture || null,
     })
+
+    if (insertError) {
+      console.error('Erreur callback — création profil:', insertError.message)
+      return NextResponse.redirect(`${origin}/auth?error=profile_creation_failed`)
+    }
   }
 
   return NextResponse.redirect(`${origin}${next}`)

@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import { useToast } from '@/components/Toast'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 
@@ -21,6 +22,7 @@ export default function DashboardHome() {
   const [dossiersUrgents, setDossiersUrgents] = useState<Dossier[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+  const { toast } = useToast()
 
   useEffect(() => { charger() }, [])
 
@@ -37,11 +39,20 @@ export default function DashboardHome() {
     const { data: { user: u } } = await supabase.auth.getUser()
     if (!u) return
 
-    const [{ data: collab }, { data: clients }, { data: dossiers }] = await Promise.all([
+    const [{ data: collab }, clientsRes, dossiersRes] = await Promise.all([
       supabase.from('collaborateurs').select('prenom, nom, avatar_url, role').eq('id', u.id).single(),
       supabase.from('clients').select('id'),
       supabase.from('dossiers_fiscaux').select('*, clients(raison_sociale)').order('date_echeance', { ascending: true }),
     ])
+
+    const loadError = clientsRes.error || dossiersRes.error
+    if (loadError) {
+      toast('Erreur de chargement du tableau de bord : ' + loadError.message, 'error')
+      setLoading(false)
+      return
+    }
+    const clients = clientsRes.data
+    const dossiers = dossiersRes.data
 
     if (collab) setUser(collab)
 

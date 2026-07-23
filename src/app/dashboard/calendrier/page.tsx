@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import PageHeader from '@/components/PageHeader'
+import { useToast } from '@/components/Toast'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type Dossier = {
@@ -40,15 +41,17 @@ export default function CalendrierPage() {
   const [jourSelectionne, setJourSelectionne] = useState<number | null>(null)
   const [filtreType, setFiltreType] = useState('tous')
   const supabase = createClient()
+  const { toast } = useToast()
 
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('dossiers_fiscaux')
       .select('id, type_impot, statut, date_echeance, periode_mois, periode_annee, clients(raison_sociale)')
       .order('date_echeance', { ascending: true })
-    setDossiers(data || [])
+    if (error) toast('Erreur de chargement du calendrier : ' + error.message, 'error')
+    else setDossiers(data || [])
     setLoading(false)
   }
 

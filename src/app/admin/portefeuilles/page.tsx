@@ -19,24 +19,36 @@ export default function PortefeuillesPage() {
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    const { data: c } = await supabase.from('collaborateurs').select('*').order('nom')
-    const { data: cl } = await supabase.from('clients').select('*').order('raison_sociale')
-    setCollaborateurs(c || [])
-    setClients(cl || [])
+    const [collabRes, clientsRes] = await Promise.all([
+      supabase.from('collaborateurs').select('*').order('nom'),
+      supabase.from('clients').select('*').order('raison_sociale'),
+    ])
+    const error = collabRes.error || clientsRes.error
+    if (error) {
+      console.error('Erreur chargement portefeuilles:', error.message)
+      alert('Erreur de chargement des données : ' + error.message)
+      setLoading(false)
+      return
+    }
+    setCollaborateurs(collabRes.data || [])
+    setClients(clientsRes.data || [])
     setLoading(false)
   }
 
   async function attribuerClient(clientId: string, collaborateurId: string) {
-    await supabase.from('clients').update({ collaborateur_id: collaborateurId || null }).eq('id', clientId)
+    const { error } = await supabase.from('clients').update({ collaborateur_id: collaborateurId || null }).eq('id', clientId)
+    if (error) { alert('Erreur d\'attribution du client : ' + error.message); return }
     charger()
   }
 
   async function changerRole(collaborateurId: string, role: string) {
   // Compter les admins actuels
-  const { data: admins } = await supabase
+  const { data: admins, error: adminsError } = await supabase
     .from('collaborateurs')
     .select('id')
     .eq('role', 'admin')
+
+  if (adminsError) { alert('Erreur de vérification des rôles : ' + adminsError.message); return }
 
   // Bloquer si c'est le dernier admin
   if (role === 'collaborateur' && admins && admins.length <= 1) {
@@ -44,7 +56,8 @@ export default function PortefeuillesPage() {
     return
   }
 
-  await supabase.from('collaborateurs').update({ role }).eq('id', collaborateurId)
+  const { error } = await supabase.from('collaborateurs').update({ role }).eq('id', collaborateurId)
+  if (error) { alert('Erreur de changement de rôle : ' + error.message); return }
   charger()
 }
 

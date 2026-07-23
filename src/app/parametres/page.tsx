@@ -38,8 +38,11 @@ export default function ParametresPage() {
   async function charger() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data } = await supabase.from('collaborateurs').select('*').eq('id', user.id).single()
-    if (data) {
+    const { data, error } = await supabase.from('collaborateurs').select('*').eq('id', user.id).single()
+    if (error) {
+      console.error('Erreur chargement profil:', error.message)
+      setMsgProfil('Erreur : impossible de charger votre profil (' + error.message + ')')
+    } else if (data) {
       setPrenom(data.prenom)
       setNom(data.nom)
       setEmail(data.email)
@@ -54,7 +57,9 @@ export default function ParametresPage() {
       for (const f of unverified) { await supabase.auth.mfa.unenroll({ factorId: f.id }) }
       const verified = mfaData?.totp?.find((f: any) => f.status === 'verified')
       if (verified) { setMfaActif(true); setMfaFactorId(verified.id) }
-    } catch (_) {}
+    } catch (e) {
+      console.error('Erreur chargement statut MFA:', e)
+    }
   }
 
 
@@ -81,7 +86,7 @@ export default function ParametresPage() {
   async function uploadAvatar(file: File) {
     setUploadingAvatar(true)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) { setUploadingAvatar(false); return }
 
     const ext = file.name.split('.').pop()
     const path = `${user.id}/avatar.${ext}`
@@ -92,7 +97,8 @@ export default function ParametresPage() {
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
     const url = data.publicUrl + '?t=' + Date.now()
 
-    await supabase.from('collaborateurs').update({ avatar_url: url }).eq('id', user.id)
+    const { error: updateError } = await supabase.from('collaborateurs').update({ avatar_url: url }).eq('id', user.id)
+    if (updateError) { alert('Erreur mise à jour de la photo: ' + updateError.message); setUploadingAvatar(false); return }
     setAvatarUrl(url)
     setUploadingAvatar(false)
   }
@@ -114,7 +120,10 @@ export default function ParametresPage() {
     setMsgEmail(error ? 'Erreur : ' + error.message : 'Email mis à jour. Vérifiez votre boîte mail.')
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) await supabase.from('collaborateurs').update({ email: newEmail }).eq('id', user.id)
+      if (user) {
+        const { error: syncError } = await supabase.from('collaborateurs').update({ email: newEmail }).eq('id', user.id)
+        if (syncError) console.error('Erreur synchro email collaborateur:', syncError.message)
+      }
       setNewEmail('')
     }
     setSavingEmail(false)
@@ -200,7 +209,8 @@ export default function ParametresPage() {
                   onClick={async () => {
                     const { data: { user } } = await supabase.auth.getUser()
                     if (!user) return
-                    await supabase.from('collaborateurs').update({ avatar_url: null }).eq('id', user.id)
+                    const { error } = await supabase.from('collaborateurs').update({ avatar_url: null }).eq('id', user.id)
+                    if (error) { alert('Erreur suppression de la photo: ' + error.message); return }
                     setAvatarUrl(null)
                   }}
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}

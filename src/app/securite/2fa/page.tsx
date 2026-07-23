@@ -26,15 +26,22 @@ export default function TwoFactorPage() {
       const session = res.data?.session
       if (!session) { router.push('/auth'); return }
       verifierStatut()
+    }).catch((e: unknown) => {
+      console.error('Erreur récupération session:', e)
+      router.push('/auth')
     })
   }, [])
 
   async function verifierStatut() {
     try {
-      const { data } = await supabase.auth.mfa.listFactors()
+      const { data, error } = await supabase.auth.mfa.listFactors()
+      if (error) throw error
       const facteur = data?.totp?.find((f: any) => f.status === 'verified')
       if (facteur) { setDejaActif(true); setFactorId(facteur.id) }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Erreur vérification statut MFA:', e)
+      setErreur(e instanceof Error ? e.message : 'Impossible de vérifier le statut 2FA')
+    }
     setEtape('setup')
   }
 
