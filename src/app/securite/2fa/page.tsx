@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 
 export default function TwoFactorPage() {
-  const [etape, setEtape] = useState<'setup' | 'scan' | 'desactiver'>('setup')
+  const [etape, setEtape] = useState<'loading' | 'setup' | 'scan' | 'desactiver'>('loading')
   const [qrCode, setQrCode] = useState('')
   const [secret, setSecret] = useState('')
   const [factorId, setFactorId] = useState('')
@@ -19,41 +19,62 @@ export default function TwoFactorPage() {
   const [erreur, setErreur] = useState('')
   const [dejaActif, setDejaActif] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [sessionOk, setSessionOk] = useState(false)
   const supabase = createClient()
   const router = useRouter()
 
-  useEffect(() => { verifierStatut() }, [])
+  useEffect(() => {
+    // Vérifier la session d'abord, puis le statut MFA
+    supabase.auth.getSession().then(({ data: sessionData }: { data: { session: import('@supabase/supabase-js').Session | null } }) => {
+      const session = sessionData.session
+      if (!session) {
+        router.push('/auth')
+        return
+      }
+      setSessionOk(true)
+      verifierStatut()
+    })
+  }, [])
 
   async function verifierStatut() {
-    const { data } = await supabase.auth.mfa.listFactors()
-    const facteur = data?.totp?.find((f: any) => f.status === 'verified')
-    if (facteur) {
-      setDejaActif(true)
-      setFactorId(facteur.id)
+    try {
+      const { data } = await supabase.auth.mfa.listFactors()
+      const facteur = data?.totp?.find((f: any) => f.status === 'verified')
+      if (facteur) {
+        setDejaActif(true)
+        setFactorId(facteur.id)
+      }
+    } catch (e) {
+      // Ignorer les erreurs MFA non critiques
     }
+    setEtape('setup')
   }
 
   async function activerMFA() {
     setLoading(true)
     setErreur('')
 
-    // Supprimer les facteurs non vérifiés existants
-    const { data: factors } = await supabase.auth.mfa.listFactors()
-    const unverified = factors?.totp?.filter((f: any) => f.status === 'unverified') || []
-    for (const f of unverified) {
-      await supabase.auth.mfa.unenroll({ factorId: f.id })
-    }
+    try {
+      // Supprimer les facteurs non vérifiés existants
+      const { data: factors } = await supabase.auth.mfa.listFactors()
+      const unverified = factors?.totp?.filter((f: any) => f.status === 'unverified') || []
+      for (const f of unverified) {
+        await supabase.auth.mfa.unenroll({ factorId: f.id })
+      }
 
-    const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      issuer: 'FiscAl',
-      friendlyName: 'FiscAl Authenticator'
-    })
-    if (error) { setErreur(error.message); setLoading(false); return }
-    setQrCode(data.totp.qr_code)
-    setSecret(data.totp.secret)
-    setFactorId(data.id)
-    setEtape('scan')
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        issuer: 'FiscAl',
+        friendlyName: 'FiscAl Authenticator'
+      })
+      if (error) { setErreur(error.message); setLoading(false); return }
+      setQrCode(data.totp.qr_code)
+      setSecret(data.totp.secret)
+      setFactorId(data.id)
+      setEtape('scan')
+    } catch (e: any) {
+      setErreur(e.message || 'Erreur lors de l\'activation')
+    }
     setLoading(false)
   }
 
@@ -62,19 +83,23 @@ export default function TwoFactorPage() {
     setLoading(true)
     setErreur('')
 
-    const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId })
-    if (ce) { setErreur(ce.message); setLoading(false); return }
+    try {
+      const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId })
+      if (ce) { setErreur(ce.message); setLoading(false); return }
 
-    const { error } = await supabase.auth.mfa.verify({
-      factorId,
-      challengeId: challenge.id,
-      code
-    })
-    if (error) { setErreur('Code incorrect. Vérifiez votre application et réessayez.'); setLoading(false); return }
+      const { error } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.id,
+        code
+      })
+      if (error) { setErreur('Code incorrect. Vérifiez votre application et réessayez.'); setLoading(false); return }
 
-    // Rafraîchir la session pour que le niveau AAL2 soit pris en compte
-    await supabase.auth.refreshSession()
-    router.push('/dashboard')
+      await supabase.auth.refreshSession()
+      router.push('/dashboard')
+    } catch (e: any) {
+      setErreur(e.message || 'Erreur de vérification')
+    }
+    setLoading(false)
   }
 
   async function desactiverMFA() {
@@ -82,21 +107,25 @@ export default function TwoFactorPage() {
     setLoading(true)
     setErreur('')
 
-    const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId })
-    if (ce) { setErreur(ce.message); setLoading(false); return }
+    try {
+      const { data: challenge, error: ce } = await supabase.auth.mfa.challenge({ factorId })
+      if (ce) { setErreur(ce.message); setLoading(false); return }
 
-    const { error: ve } = await supabase.auth.mfa.verify({
-      factorId,
-      challengeId: challenge.id,
-      code: codeDesactiver
-    })
-    if (ve) { setErreur('Code incorrect'); setLoading(false); return }
+      const { error: ve } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challenge.id,
+        code: codeDesactiver
+      })
+      if (ve) { setErreur('Code incorrect'); setLoading(false); return }
 
-    await supabase.auth.mfa.unenroll({ factorId })
-    setDejaActif(false)
-    setEtape('setup')
-    setCodeDesactiver('')
-    setFactorId('')
+      await supabase.auth.mfa.unenroll({ factorId })
+      setDejaActif(false)
+      setEtape('setup')
+      setCodeDesactiver('')
+      setFactorId('')
+    } catch (e: any) {
+      setErreur(e.message || 'Erreur lors de la désactivation')
+    }
     setLoading(false)
   }
 
@@ -105,6 +134,18 @@ export default function TwoFactorPage() {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  // Écran de chargement initial
+  if (etape === 'loading') return (
+    <div className="min-h-screen flex items-center justify-center"
+      style={{ background: 'linear-gradient(135deg, #0f2318 0%, #1a3c2e 50%, #2d6a4f 100%)' }}>
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        className="w-10 h-10 rounded-full border-2"
+        style={{ borderColor: '#e8a317', borderTopColor: 'transparent' }} />
+    </div>
+  )
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4"
@@ -217,7 +258,14 @@ export default function TwoFactorPage() {
               1. Scannez ce QR code avec votre application
             </p>
             <div className="flex justify-center p-4 bg-white rounded-2xl border border-gray-200">
-              {qrCode && <QRCodeSVG value={qrCode} size={180} />}
+              {qrCode ? (
+                <QRCodeSVG value={qrCode} size={180} />
+              ) : (
+                <div className="w-[180px] h-[180px] flex items-center justify-center">
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="w-8 h-8 rounded-full border-2" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
+                </div>
+              )}
             </div>
             <div className="p-3 rounded-xl flex items-center justify-between gap-3" style={{ background: '#f8fafb' }}>
               <div className="min-w-0">

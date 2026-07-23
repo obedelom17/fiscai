@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 
-type Collaborateur = { id: string; nom: string; prenom: string; email: string; role: string }
+type Collaborateur = { id: string; nom: string; prenom: string; email: string; role: string; avatar_url?: string | null }
 type Client = { id: string; raison_sociale: string; nif: string; secteur_activite: string; collaborateur_id: string | null }
 
 export default function PortefeuillesPage() {
@@ -121,9 +121,12 @@ export default function PortefeuillesPage() {
                     style={{ background: '#fafffe' }}>
                     <div className="flex items-center gap-3">
                       <motion.div whileHover={{ scale: 1.1 }}
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-md"
-                        style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                        {c.prenom[0]}{c.nom[0]}
+                        className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0"
+                        style={{ background: c.avatar_url ? 'transparent' : 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                        {c.avatar_url
+                          ? <img src={c.avatar_url} alt={`${c.prenom} ${c.nom}`} className="w-full h-full object-cover" />
+                          : <>{c.prenom[0]}{c.nom[0]}</>
+                        }
                       </motion.div>
                       <div>
                         <p className="text-sm font-semibold text-gray-800">{c.prenom} {c.nom}</p>

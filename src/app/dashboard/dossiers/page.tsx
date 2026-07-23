@@ -299,6 +299,14 @@ export default function DossiersPage() {
     chargerDocuments(dossierId)
   }
 
+  async function voirPdf(doc: Document) {
+    const { data, error } = await supabase.storage
+      .from('documents-fiscaux')
+      .createSignedUrl(doc.url_stockage, 300) // 5 minutes
+    if (error || !data?.signedUrl) { toast('Impossible d\'ouvrir le fichier', 'error'); return }
+    window.open(data.signedUrl, '_blank')
+  }
+
   async function genererContenu(dossier: Dossier, modeleId?: string) {
     setGeneratingEmail(true)
     setRelanceEnvoyee(null)
@@ -657,8 +665,20 @@ export default function DossiersPage() {
                             </div>
                             <p className="text-xs text-gray-700 truncate">{doc.nom_fichier}</p>
                           </div>
-                          <button onClick={() => supprimerDocument(doc, dossierActif.id)}
-                            className="text-red-400 hover:text-red-600 text-xs ml-2 flex-shrink-0">✕</button>
+                          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                            <button onClick={() => voirPdf(doc)}
+                              title="Voir le PDF"
+                              className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-green-100 transition-colors"
+                              style={{ color: '#2d6a4f' }}>
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <button onClick={() => supprimerDocument(doc, dossierActif.id)}
+                              title="Supprimer"
+                              className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors text-xs">✕</button>
+                          </div>
                         </div>
                       ))}
                     </div>

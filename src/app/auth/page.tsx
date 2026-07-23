@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -16,6 +16,10 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [erreur, setErreur] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [proposer2FA, setProposer2FA] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -26,6 +30,17 @@ export default function AuthPage() {
     setPassword('')
     setNom('')
     setPrenom('')
+    setAvatarFile(null)
+    setAvatarPreview(null)
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
   }
 
   async function handleConnexion() {
@@ -48,11 +63,24 @@ export default function AuthPage() {
     if (data.user) {
       const { count } = await supabase.from('collaborateurs').select('*', { count: 'exact', head: true })
       const role = (count === 0 || count === null) ? 'admin' : 'collaborateur'
+
+      // Upload avatar si fourni
+      let avatarUrl: string | null = null
+      if (avatarFile) {
+        const ext = avatarFile.name.split('.').pop()
+        const path = `${data.user.id}/avatar.${ext}`
+        const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, avatarFile, { upsert: true })
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+          avatarUrl = urlData.publicUrl + '?t=' + Date.now()
+        }
+      }
+
       const { error: insertError } = await supabase.from('collaborateurs').insert({
-        id: data.user.id, nom, prenom, email, role
+        id: data.user.id, nom, prenom, email, role, avatar_url: avatarUrl
       })
       if (insertError) { setErreur('Erreur création profil: ' + insertError.message); setLoading(false); return }
-      router.push('/dashboard')
+      setProposer2FA(true)
     }
     setLoading(false)
   }
@@ -64,6 +92,68 @@ export default function AuthPage() {
     })
     if (error) setErreur('Erreur Google: ' + error.message)
   }
+
+  // Écran proposition 2FA après inscription
+  if (proposer2FA) return (
+    <div className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: 'linear-gradient(135deg, #0f2318 0%, #1a3c2e 50%, #2d6a4f 100%)' }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md text-center">
+
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5"
+          style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+
+        <h2 className="text-2xl font-black text-gray-800 mb-2">Compte créé !</h2>
+        <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+          Voulez-vous activer l'authentification à deux facteurs pour renforcer la sécurité de votre compte ?
+        </p>
+
+        <div className="p-4 rounded-2xl mb-6 text-left space-y-2" style={{ background: '#f0f9f4' }}>
+          {[
+            'Protection contre les accès non autorisés',
+            'Code unique à chaque connexion',
+            'Compatible Google Authenticator, Authy…',
+          ].map((t, i) => (
+            <div key={i} className="flex items-center gap-2.5">
+              <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: '#2d6a4f' }}>
+                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-xs text-gray-600">{t}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <motion.button
+            onClick={() => router.push('/securite/2fa')}
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            className="w-full py-3.5 rounded-xl text-white font-bold text-sm shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+            Oui, activer le 2FA
+          </motion.button>
+          <motion.button
+            onClick={() => router.push('/dashboard')}
+            whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+            className="w-full py-3 rounded-xl text-sm font-medium border border-gray-200 text-gray-500 hover:bg-gray-50">
+            Non, ignorer pour l'instant
+          </motion.button>
+        </div>
+
+        <p className="text-xs text-gray-400 mt-4">
+          Vous pouvez l'activer plus tard dans Paramètres → Sécurité
+        </p>
+      </motion.div>
+    </div>
+  )
 
   const features = [
     'Zéro oubli sur les échéances OTR',
@@ -77,7 +167,6 @@ export default function AuthPage() {
 
       {/* Panneau gauche — fond image */}
       <div className="hidden lg:flex flex-col justify-between w-[55%] relative p-14">
-        {/* Image de fond */}
         <div className="absolute inset-0">
           <img
             src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1400&q=90"
@@ -90,7 +179,6 @@ export default function AuthPage() {
           }} />
         </div>
 
-        {/* Contenu gauche */}
         <div className="relative z-10">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg"
@@ -141,7 +229,6 @@ export default function AuthPage() {
       <div className="flex-1 flex items-center justify-center p-6 relative"
         style={{ background: '#f8fafb' }}>
 
-        {/* Déco cercles */}
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-5"
           style={{ background: '#2d6a4f', transform: 'translate(30%, -30%)' }} />
         <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-5"
@@ -170,7 +257,6 @@ export default function AuthPage() {
 
             {/* Onglets */}
             <div className="flex bg-gray-100 rounded-2xl p-1 mb-7 relative">
-              {/* Slider animé */}
               <motion.div
                 className="absolute top-1 bottom-1 rounded-xl shadow-sm"
                 style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)', width: 'calc(50% - 4px)' }}
@@ -217,22 +303,44 @@ export default function AuthPage() {
                 className="space-y-4">
 
                 {mode === 'inscription' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Prénom</label>
-                      <input type="text" value={prenom} onChange={e => setPrenom(e.target.value)}
-                        placeholder="Kofi"
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-                        style={{ '--tw-ring-color': '#2d6a4f' } as any} />
+                  <>
+                    {/* Photo de profil */}
+                    <div className="flex flex-col items-center gap-2">
+                      <div
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="w-20 h-20 rounded-2xl overflow-hidden cursor-pointer border-2 border-dashed flex items-center justify-center transition-all hover:border-green-500"
+                        style={{ borderColor: avatarPreview ? 'transparent' : '#d1d5db', background: avatarPreview ? 'transparent' : '#f9fafb' }}>
+                        {avatarPreview ? (
+                          <img src={avatarPreview} alt="Aperçu" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400">Photo de profil (optionnel)</p>
+                      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Nom</label>
-                      <input type="text" value={nom} onChange={e => setNom(e.target.value)}
-                        placeholder="Mensah"
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-                        style={{ '--tw-ring-color': '#2d6a4f' } as any} />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Prénom</label>
+                        <input type="text" value={prenom} onChange={e => setPrenom(e.target.value)}
+                          placeholder="Kofi"
+                          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                          style={{ '--tw-ring-color': '#2d6a4f' } as any} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Nom</label>
+                        <input type="text" value={nom} onChange={e => setNom(e.target.value)}
+                          placeholder="Mensah"
+                          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                          style={{ '--tw-ring-color': '#2d6a4f' } as any} />
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
 
                 <div>
