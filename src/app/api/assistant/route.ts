@@ -31,30 +31,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 
-  const { message, contexte } = await request.json()
+  const { message, contexte, historique = [] } = await request.json()
 
   if (!message?.trim()) {
     return NextResponse.json({ error: 'Message vide' }, { status: 400 })
   }
 
-  try {
-    const completion = await getGroq().chat.completions.create({
-      model: 'llama-3.1-8b-instant',
-      messages: [
-        {
-          role: 'system',
-          content: `Tu es FiscAl, un assistant fiscal intelligent pour le cabinet Experts Afrique Conseils au Togo.
+  // Construire les messages avec historique (mémoire de conversation)
+  const messagesGroq: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    {
+      role: 'system',
+      content: `Tu es FiscAl, un assistant fiscal intelligent pour le cabinet Experts Afrique Conseils au Togo.
 Tu aides les collaborateurs à analyser les dossiers fiscaux de leurs clients.
 Tu connais la fiscalité togolaise : TVA, IRPP, Impôt sur les Sociétés, OTR.
+Tu te souviens des échanges précédents dans cette conversation et tu en tiens compte.
 Voici les données actuelles du portefeuille :
 ${contexte}
 Réponds en français, de manière concise et professionnelle.`
-        },
-        {
-          role: 'user',
-          content: message
-        }
-      ],
+    },
+    // Historique complet de la conversation
+    ...historique.map((h: { role: string; content: string }) => ({
+      role: h.role as 'user' | 'assistant',
+      content: h.content
+    })),
+    // Nouveau message
+    { role: 'user' as const, content: message }
+  ]
+
+  try {
+    const completion = await getGroq().chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: messagesGroq,
       max_tokens: 1024,
       temperature: 0.7,
     })

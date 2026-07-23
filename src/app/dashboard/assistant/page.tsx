@@ -48,14 +48,21 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
     if (!input.trim() || loading) return
     const userMsg = input.trim()
     setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }])
+    const newMessages: Message[] = [...messages, { role: 'user', content: userMsg }]
+    setMessages(newMessages)
     setLoading(true)
+
+    // Historique complet envoyé à l'API (mémoire de conversation)
+    const historique = newMessages.slice(0, -1).map(m => ({
+      role: m.role,
+      content: m.content
+    }))
 
     try {
       const res = await fetch('/api/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg, contexte })
+        body: JSON.stringify({ message: userMsg, contexte, historique })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erreur serveur')
@@ -67,7 +74,11 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
     }
   }
 
-  const suggestions = [
+  function reinitialiser() {
+    setMessages([{ role: 'assistant', content: 'Bonjour. Je suis FiscAl, votre assistant fiscal intelligent. Posez-moi vos questions sur vos dossiers clients, échéances OTR ou obligations fiscales togolaises.' }])
+  }
+
+  const suggestionsList = [
     'Quels clients ont des dossiers TVA en attente ?',
     'Quelles sont les échéances critiques cette semaine ?',
     'Résume le statut de conformité du cabinet',
@@ -76,14 +87,31 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
 
   return (
     <div className="h-screen flex flex-col" style={{ background: '#f0f4f1' }}>
-
       <PageHeader
-  titre="Assistant IA"
-  sousTitre="Interrogez vos données fiscales en langage naturel"
-  imageUrl="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80"
-/>
+        titre="Assistant IA"
+        sousTitre="Interrogez vos données fiscales en langage naturel"
+        imageUrl="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80"
+        bouton={
+          messages.length > 1 ? (
+            <button onClick={reinitialiser}
+              className="px-3 py-1.5 rounded-xl text-white text-xs font-medium"
+              style={{ background: 'rgba(255,255,255,0.2)' }}>
+              Nouvelle conversation
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden px-4 md:px-8 py-4 md:py-6 gap-4">
+
+        {/* Indicateur mémoire */}
+        {messages.length > 2 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs flex-shrink-0"
+            style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            Historique actif — {Math.floor((messages.length - 1) / 2)} échange(s) en mémoire
+          </div>
+        )}
 
         {/* Suggestions */}
         <AnimatePresence>
@@ -93,7 +121,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, height: 0 }}
               className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 flex-shrink-0">
-              {suggestions.map((s, i) => (
+              {suggestionsList.map((s, i) => (
                 <motion.button key={i}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -115,7 +143,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           )}
         </AnimatePresence>
 
-        {/* Zone messages — prend tout l'espace restant */}
+        {/* Zone messages */}
         <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-y-auto space-y-4 min-h-0">
           <AnimatePresence initial={false}>
             {messages.map((msg, i) => (
@@ -182,7 +210,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           <div ref={bottomRef} />
         </div>
 
-        {/* Input fixe en bas */}
+        {/* Input */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '@/components/PageHeader'
+import { useToast } from '@/components/Toast'
 
 type Client = {
   id: string
@@ -27,6 +28,7 @@ const REGIME_COLORS: Record<string, string> = {
 }
 
 export default function ClientsPage() {
+  const { toast } = useToast()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -41,6 +43,7 @@ export default function ClientsPage() {
   const [telephone, setTelephone] = useState('')
   const [saving, setSaving] = useState(false)
   const [supprimant, setSupprimant] = useState(false)
+  const [exportingId, setExportingId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => { charger() }, [])
@@ -69,9 +72,11 @@ export default function ClientsPage() {
     const payload = { raison_sociale, nif, regime_fiscal, secteur_activite, email_contact, telephone }
     if (clientEnEdition) {
       await supabase.from('clients').update(payload).eq('id', clientEnEdition.id)
+      toast('Client modifié avec succès')
     } else {
       const { data: { user } } = await supabase.auth.getUser()
       await supabase.from('clients').insert({ ...payload, collaborateur_id: user?.id })
+      toast('Client créé avec succès')
     }
     setShowForm(false); setClientEnEdition(null); charger(); setSaving(false)
   }
@@ -80,7 +85,28 @@ export default function ClientsPage() {
     if (!clientASupprimer) return
     setSupprimant(true)
     await supabase.from('clients').delete().eq('id', clientASupprimer.id)
+    toast('Client supprimé', 'error')
     setClientASupprimer(null); charger(); setSupprimant(false)
+  }
+
+  async function exporterBulletin(client: Client) {
+    setExportingId(client.id)
+    try {
+      const res = await fetch(`/api/export-pdf?client_id=${client.id}`)
+      if (!res.ok) throw new Error('Erreur export')
+      const html = await res.text()
+      const blob = new Blob([html], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `bulletin-fiscal-${client.raison_sociale.replace(/[^a-zA-Z0-9]/g, '-')}.html`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast('Bulletin exporté avec succès')
+    } catch {
+      toast('Erreur lors de l\'export', 'error')
+    }
+    setExportingId(null)
   }
 
   const clientsFiltres = clients.filter(c =>
@@ -148,11 +174,11 @@ export default function ClientsPage() {
                 {[
                   { label: 'Raison sociale', value: raison_sociale, set: setRaison, placeholder: "Nom de l'entreprise", type: 'text' },
                   { label: 'NIF', value: nif, set: setNif, placeholder: "Numéro d'identification fiscale", type: 'text' },
-                  { label: 'Secteur d\'activité', value: secteur_activite, set: setSecteur, placeholder: 'Commerce, BTP, Services...', type: 'text' },
+                  { label: "Secteur d'activité", value: secteur_activite, set: setSecteur, placeholder: 'Commerce, BTP, Services...', type: 'text' },
                   { label: 'Email de contact', value: email_contact, set: setEmailContact, placeholder: 'contact@entreprise.com', type: 'email' },
                   { label: 'Téléphone (WhatsApp)', value: telephone, set: setTelephone, placeholder: '+228 90 00 00 00', type: 'tel' },
                 ].map(f => (
-                  <div key={f.label} className={f.label === 'Raison sociale' ? '' : ''}>
+                  <div key={f.label}>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">{f.label}</label>
                     <input type={f.type} value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.placeholder}
                       className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
@@ -249,10 +275,15 @@ export default function ClientsPage() {
                         </span>
                       </td>
                       <td className="px-5 py-4 text-sm text-gray-500">{c.secteur_activite}</td>
-                      <td className="px-5 py-4 text-sm text-gray-500 truncate max-w-[160px]">{c.email_contact}</td>
+                      <td className="px-5 py-4 text-sm text-gray-500 truncate max-w-[140px]">{c.email_contact}</td>
                       <td className="px-5 py-4 text-sm text-gray-500">{c.telephone || '—'}</td>
                       <td className="px-5 py-4">
                         <div className="flex gap-1.5">
+                          <button onClick={() => exporterBulletin(c)} disabled={exportingId === c.id}
+                            className="text-xs px-2.5 py-1.5 rounded-lg font-medium disabled:opacity-50"
+                            style={{ background: '#fff8ed', color: '#e8a317' }}>
+                            {exportingId === c.id ? '...' : 'Export'}
+                          </button>
                           <button onClick={() => ouvrirFormulaire(c)}
                             className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                             Modifier
@@ -292,6 +323,11 @@ export default function ClientsPage() {
                       {c.telephone && <p className="text-xs text-gray-400">{c.telephone}</p>}
                     </div>
                     <div className="flex gap-1.5 flex-shrink-0 ml-2">
+                      <button onClick={() => exporterBulletin(c)} disabled={exportingId === c.id}
+                        className="text-xs px-2.5 py-1.5 rounded-lg font-medium disabled:opacity-50"
+                        style={{ background: '#fff8ed', color: '#e8a317' }}>
+                        {exportingId === c.id ? '...' : 'Export'}
+                      </button>
                       <button onClick={() => ouvrirFormulaire(c)}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                         Modifier

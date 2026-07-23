@@ -2,9 +2,10 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import PageHeader from '@/components/PageHeader'
+import { useToast } from '@/components/Toast'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type Client = { id: string; raison_sociale: string; email_contact: string; telephone?: string }
@@ -28,6 +29,27 @@ type Relance = {
   clients: { raison_sociale: string }
   dossiers_fiscaux: { type_impot: string; periode_mois: number | null; periode_annee: number }
 }
+type Document = {
+  id: string
+  nom_fichier: string
+  url_stockage: string
+  type_document: string
+  created_at: string
+}
+type AuditLog = {
+  id: string
+  action: string
+  details: string
+  created_at: string
+  collaborateurs: { nom: string; prenom: string } | null
+}
+type ModeleRelance = {
+  id: string
+  type_impot: string
+  canal: string
+  contenu: string
+  nom: string
+}
 
 const STATUT_COULEURS: Record<string, string> = {
   en_attente: 'bg-yellow-100 text-yellow-700',
@@ -44,11 +66,12 @@ const STATUT_LABELS: Record<string, string> = {
 const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
 
 export default function DossiersPage() {
+  const { toast } = useToast()
   const [dossiers, setDossiers] = useState<Dossier[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [relances, setRelances] = useState<Relance[]>([])
   const [loading, setLoading] = useState(true)
-  const [onglet, setOnglet] = useState<'dossiers' | 'historique'>('dossiers')
+  const [onglet, setOnglet] = useState<'dossiers' | 'historique' | 'modeles' | 'audit'>('dossiers')
   const [showForm, setShowForm] = useState(false)
   const [dossierEnEdition, setDossierEnEdition] = useState<Dossier | null>(null)
   const [dossierASupprimer, setDossierASupprimer] = useState<Dossier | null>(null)
@@ -65,15 +88,32 @@ export default function DossiersPage() {
   const [emailContenu, setEmailContenu] = useState('')
   const [sendingRelance, setSendingRelance] = useState(false)
   const [relanceEnvoyee, setRelanceEnvoyee] = useState<'email' | 'whatsapp' | null>(null)
-  const [fichierNom, setFichierNom] = useState('')
   const [filtreStatut, setFiltreStatut] = useState('tous')
   const [canalRelance, setCanalRelance] = useState<'email' | 'whatsapp'>('email')
+  // Drag & Drop
+  const [dragOver, setDragOver] = useState(false)
+  const [fichiersDrop, setFichiersDrop] = useState<File[]>([])
+  // Pièces jointes multiples
+  const [documentsActif, setDocumentsActif] = useState<Document[]>([])
+  // Audit logs
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  // Modèles de relance
+  const [modeles, setModeles] = useState<ModeleRelance[]>([])
+  const [showModeleForm, setShowModeleForm] = useState(false)
+  const [modeleNom, setModeleNom] = useState('')
+  const [modeleTypeImpot, setModeleTypeImpot] = useState('TVA')
+  const [modeleCanal, setModeleCanal] = useState<'email' | 'whatsapp'>('email')
+  const [modeleContenu, setModeleContenu] = useState('')
+  // Suggestions proactives
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(true)
+
   const fileRef = useRef<HTMLInputElement>(null)
+  const multiFileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   useEffect(() => { charger() }, [])
 
-  // Realtime
   useEffect(() => {
     const channel = supabase
       .channel('dossiers-realtime')
@@ -84,19 +124,57 @@ export default function DossiersPage() {
 
   async function charger() {
     try {
-      const [{ data: d }, { data: c }, { data: r }] = await Promise.all([
+      const [{ data: d }, { data: c }, { data: r }, { data: logs }, { data: mods }] = await Promise.all([
         supabase.from('dossiers_fiscaux').select('*, clients(raison_sociale, email_contact, telephone), collaborateurs(nom, prenom)').order('date_echeance', { ascending: true }),
         supabase.from('clients').select('id, raison_sociale, email_contact, telephone'),
         supabase.from('relances').select('*, clients(raison_sociale), dossiers_fiscaux(type_impot, periode_mois, periode_annee)').order('date_envoi', { ascending: false }),
+        supabase.from('audit_logs').select('*, collaborateurs(nom, prenom)').order('created_at', { ascending: false }).limit(100),
+        supabase.from('modeles_relance').select('*').order('created_at', { ascending: false }),
       ])
-      setDossiers(d || [])
+      const dossiersData = d || []
+      setDossiers(dossiersData)
       setClients(c || [])
       setRelances(r || [])
+      setAuditLogs(logs || [])
+      setModeles(mods || [])
+      // Suggestions proactives
+      calculerSuggestions(dossiersData, r || [])
     } catch (e) {
       // silently fail
     } finally {
       setLoading(false)
     }
+  }
+
+  function calculerSuggestions(dossiersData: Dossier[], relancesData: Relance[]) {
+    const dans7 = new Date(); dans7.setDate(dans7.getDate() + 7)
+    const aujourd = new Date()
+    const urgents = dossiersData.filter(d => {
+      const ech = new Date(d.date_echeance)
+      return ech <= dans7 && ech >= aujourd && d.statut === 'en_attente'
+    })
+    const enRetard = dossiersData.filter(d => new Date(d.date_echeance) < aujourd && d.statut !== 'televerse_otr')
+    const s: string[] = []
+    if (urgents.length > 0) {
+      const types = [...new Set(urgents.map(d => d.type_impot))].join(', ')
+      s.push(`${urgents.length} dossier(s) ${types} arrivent à échéance cette semaine — voulez-vous préparer les relances ?`)
+    }
+    if (enRetard.length > 0) {
+      s.push(`${enRetard.length} dossier(s) sont en retard. Action recommandée.`)
+    }
+    const sansRelance = dossiersData.filter(d =>
+      d.statut === 'en_attente' && !relancesData.some(r => (r as any).dossier_id === d.id)
+    )
+    if (sansRelance.length > 0) {
+      s.push(`${sansRelance.length} dossier(s) en attente n'ont reçu aucune relance.`)
+    }
+    setSuggestions(s)
+  }
+
+  async function logAudit(action: string, details: string) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('audit_logs').insert({ collaborateur_id: user.id, action, details })
   }
 
   function ouvrirFormulaire(dossier?: Dossier) {
@@ -126,9 +204,13 @@ export default function DossiersPage() {
     }
     if (dossierEnEdition) {
       await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
+      await logAudit('MODIFICATION_DOSSIER', `Dossier ${typeImpot} modifié pour le client ${clients.find(c => c.id === clientId)?.raison_sociale}`)
+      toast('Dossier modifié avec succès')
     } else {
       const { data: { user } } = await supabase.auth.getUser()
       await supabase.from('dossiers_fiscaux').insert({ ...payload, statut: 'en_attente', collaborateur_id: user?.id })
+      await logAudit('CREATION_DOSSIER', `Nouveau dossier ${typeImpot} créé pour ${clients.find(c => c.id === clientId)?.raison_sociale}`)
+      toast('Dossier créé avec succès')
     }
     setShowForm(false); setDossierEnEdition(null)
     charger(); setSaving(false)
@@ -137,39 +219,111 @@ export default function DossiersPage() {
   async function supprimerDossier() {
     if (!dossierASupprimer) return
     setSupprimant(true)
+    await logAudit('SUPPRESSION_DOSSIER', `Dossier ${dossierASupprimer.type_impot} de ${dossierASupprimer.clients?.raison_sociale} supprimé`)
     await supabase.from('dossiers_fiscaux').delete().eq('id', dossierASupprimer.id)
+    toast('Dossier supprimé', 'error')
     setDossierASupprimer(null); charger(); setSupprimant(false)
   }
 
-  async function changerStatut(id: string, statut: string) {
+  async function changerStatut(id: string, statut: string, dossier: Dossier) {
     await supabase.from('dossiers_fiscaux').update({ statut }).eq('id', id)
+    await logAudit('CHANGEMENT_STATUT', `Statut de ${dossier.clients?.raison_sociale} (${dossier.type_impot}) → ${STATUT_LABELS[statut]}`)
+    toast(`Statut mis à jour : ${STATUT_LABELS[statut]}`)
     charger()
   }
 
-  async function uploadPDF(dossier: Dossier) {
-    const file = fileRef.current?.files?.[0]
-    if (!file) return
+  // Drag & Drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback(() => {
+    setDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf')
+    if (files.length === 0) {
+      toast('Seuls les fichiers PDF sont acceptés', 'error')
+      return
+    }
+    setFichiersDrop(files)
+  }, [toast])
+
+  async function uploadFichiers(dossier: Dossier, files: File[]) {
+    if (files.length === 0) return
     setUploading(true)
-    const path = `${dossier.id}/${file.name}`
-    const { error } = await supabase.storage.from('documents-fiscaux').upload(path, file, { upsert: true })
-    if (error) { alert('Erreur upload: ' + error.message); setUploading(false); return }
-    await supabase.from('documents').insert({ dossier_id: dossier.id, nom_fichier: file.name, url_stockage: path, type_document: file.type })
-    await supabase.from('dossiers_fiscaux').update({ statut: 'recu', date_depot: new Date().toISOString() }).eq('id', dossier.id)
-    charger()
+    let success = 0
+    for (const file of files) {
+      const path = `${dossier.id}/${Date.now()}_${file.name}`
+      const { error } = await supabase.storage.from('documents-fiscaux').upload(path, file, { upsert: true })
+      if (error) {
+        toast(`Erreur upload ${file.name}: ${error.message}`, 'error')
+        continue
+      }
+      await supabase.from('documents').insert({
+        dossier_id: dossier.id,
+        nom_fichier: file.name,
+        url_stockage: path,
+        type_document: file.type
+      })
+      success++
+    }
+    if (success > 0) {
+      await supabase.from('dossiers_fiscaux').update({ statut: 'recu', date_depot: new Date().toISOString() }).eq('id', dossier.id)
+      await logAudit('UPLOAD_DOCUMENT', `${success} document(s) uploadé(s) pour ${dossier.clients?.raison_sociale} (${dossier.type_impot})`)
+      toast(`${success} fichier(s) uploadé(s) avec succès`)
+      charger()
+      chargerDocuments(dossier.id)
+    }
+    setFichiersDrop([])
     if (fileRef.current) fileRef.current.value = ''
-    setFichierNom(''); setUploading(false)
+    setUploading(false)
   }
 
-  async function genererContenu(dossier: Dossier) {
+  async function chargerDocuments(dossierId: string) {
+    const { data } = await supabase.from('documents').select('*').eq('dossier_id', dossierId).order('created_at', { ascending: false })
+    setDocumentsActif(data || [])
+  }
+
+  async function supprimerDocument(doc: Document, dossierId: string) {
+    await supabase.storage.from('documents-fiscaux').remove([doc.url_stockage])
+    await supabase.from('documents').delete().eq('id', doc.id)
+    await logAudit('SUPPRESSION_DOCUMENT', `Document ${doc.nom_fichier} supprimé`)
+    toast('Document supprimé', 'warning')
+    chargerDocuments(dossierId)
+  }
+
+  async function genererContenu(dossier: Dossier, modeleId?: string) {
     setGeneratingEmail(true)
     setRelanceEnvoyee(null)
+
+    // Si modèle sélectionné
+    if (modeleId) {
+      const modele = modeles.find(m => m.id === modeleId)
+      if (modele) {
+        const contenu = modele.contenu
+          .replace('{client}', dossier.clients.raison_sociale)
+          .replace('{type_impot}', dossier.type_impot)
+          .replace('{periode}', dossier.periode_mois ? `${MOIS[dossier.periode_mois - 1]} ${dossier.periode_annee}` : String(dossier.periode_annee))
+          .replace('{echeance}', new Date(dossier.date_echeance).toLocaleDateString('fr-FR'))
+        setEmailContenu(contenu)
+        setGeneratingEmail(false)
+        return
+      }
+    }
+
     const isWA = canalRelance === 'whatsapp'
     const res = await fetch('/api/assistant', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: `Rédige un ${isWA ? 'message WhatsApp' : 'email'} de relance professionnel en français pour demander les documents fiscaux manquants à l'entreprise "${dossier.clients.raison_sociale}". Il s'agit de leur déclaration ${dossier.type_impot}${dossier.periode_mois ? ` du mois ${MOIS[dossier.periode_mois - 1]}` : ''} ${dossier.periode_annee}. L'échéance OTR est le ${new Date(dossier.date_echeance).toLocaleDateString('fr-FR')}. ${isWA ? 'Format court, direct, adapté WhatsApp, sans mise en forme HTML.' : 'Sois professionnel, concis et urgent sans être agressif.'} Ne mets pas de signature.`,
-        contexte: ''
+        contexte: '',
+        historique: [],
       })
     })
     const data = await res.json()
@@ -180,7 +334,6 @@ export default function DossiersPage() {
   async function envoyerRelance(dossier: Dossier) {
     if (!emailContenu.trim()) return
     setSendingRelance(true)
-
     try {
       if (canalRelance === 'whatsapp') {
         const tel = (dossier.clients.telephone || '').replace(/[^0-9]/g, '')
@@ -189,43 +342,54 @@ export default function DossiersPage() {
           window.open(`https://wa.me/${tel}?text=${msg}`, '_blank')
         } else {
           await navigator.clipboard.writeText(emailContenu)
-          alert('Numéro non renseigné — message copié dans le presse-papier')
+          toast('Numéro non renseigné — message copié', 'warning')
         }
         await supabase.from('relances').insert({
-          dossier_id: dossier.id,
-          client_id: dossier.client_id,
-          contenu_email: emailContenu,
-          statut: 'envoye_whatsapp',
-          canal: 'whatsapp',
+          dossier_id: dossier.id, client_id: dossier.client_id,
+          contenu_email: emailContenu, statut: 'envoye_whatsapp', canal: 'whatsapp',
         })
+        await logAudit('RELANCE_WHATSAPP', `Relance WhatsApp envoyée à ${dossier.clients.raison_sociale}`)
         setRelanceEnvoyee('whatsapp')
+        toast('Relance WhatsApp envoyée')
       } else {
         const emailjs = (await import('@emailjs/browser')).default
         await emailjs.send(
           process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
           process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-          {
-            to_email: dossier.clients.email_contact,
-            from_name: 'Experts Afrique Conseils',
-            message: emailContenu,
-          },
+          { to_email: dossier.clients.email_contact, from_name: 'Experts Afrique Conseils', message: emailContenu },
           process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
         )
         await supabase.from('relances').insert({
-          dossier_id: dossier.id,
-          client_id: dossier.client_id,
-          contenu_email: emailContenu,
-          statut: 'envoye',
-          canal: 'email',
+          dossier_id: dossier.id, client_id: dossier.client_id,
+          contenu_email: emailContenu, statut: 'envoye', canal: 'email',
         })
+        await logAudit('RELANCE_EMAIL', `Relance email envoyée à ${dossier.clients.raison_sociale}`)
         setRelanceEnvoyee('email')
+        toast('Relance email envoyée avec succès')
       }
     } catch (err: any) {
-      alert('Erreur envoi : ' + (err?.message || 'Vérifiez vos clés EmailJS'))
+      toast('Erreur envoi : ' + (err?.message || 'Vérifiez vos clés EmailJS'), 'error')
     } finally {
       setSendingRelance(false)
       charger()
     }
+  }
+
+  async function sauvegarderModele() {
+    if (!modeleNom.trim() || !modeleContenu.trim()) return
+    await supabase.from('modeles_relance').insert({
+      nom: modeleNom, type_impot: modeleTypeImpot, canal: modeleCanal, contenu: modeleContenu
+    })
+    toast('Modèle sauvegardé')
+    setShowModeleForm(false)
+    setModeleNom(''); setModeleContenu('')
+    charger()
+  }
+
+  async function supprimerModele(id: string) {
+    await supabase.from('modeles_relance').delete().eq('id', id)
+    toast('Modèle supprimé', 'warning')
+    charger()
   }
 
   const aujourd = new Date()
@@ -274,6 +438,29 @@ export default function DossiersPage() {
             </motion.div>
           ))}
         </div>
+
+        {/* Suggestions proactives */}
+        <AnimatePresence>
+          {showSuggestions && suggestions.length > 0 && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+              className="mb-5 rounded-2xl border overflow-hidden"
+              style={{ background: '#fff8ed', borderColor: '#fcd34d' }}>
+              <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: '#fcd34d40' }}>
+                <p className="text-xs font-semibold text-yellow-800 uppercase tracking-wide">Suggestions IA</p>
+                <button onClick={() => setShowSuggestions(false)} className="text-yellow-600 text-xs">Fermer</button>
+              </div>
+              <div className="p-4 space-y-2">
+                {suggestions.map((s, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
+                      className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0 mt-1.5" />
+                    <p className="text-sm text-yellow-800">{s}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Alerte urgences */}
         <AnimatePresence>
@@ -396,35 +583,84 @@ export default function DossiersPage() {
                     {dossierActif.type_impot} — {dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] + ' ' : ''}{dossierActif.periode_annee} — Échéance : {new Date(dossierActif.date_echeance).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
-                <button onClick={() => { setDossierActif(null); setEmailContenu(''); setRelanceEnvoyee(null); setFichierNom('') }}
+                <button onClick={() => { setDossierActif(null); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); setDocumentsActif([]) }}
                   className="text-gray-400 hover:text-gray-600 text-xl flex-shrink-0">✕</button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Upload PDF */}
+                {/* Upload PDF drag & drop + multi-fichiers */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Justificatif PDF</h3>
-                  <label htmlFor="pdf-upload"
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Documents</h3>
+
+                  {/* Zone drag & drop */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => multiFileRef.current?.click()}
                     className="block border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all"
-                    style={{ borderColor: fichierNom ? '#2d6a4f' : '#d1d5db', background: fichierNom ? '#f0f9f4' : 'white' }}>
-                    <input ref={fileRef} type="file" accept=".pdf" className="hidden" id="pdf-upload"
-                      onChange={e => setFichierNom(e.target.files?.[0]?.name || '')} />
+                    style={{
+                      borderColor: dragOver ? '#2d6a4f' : fichiersDrop.length > 0 ? '#2d6a4f' : '#d1d5db',
+                      background: dragOver ? '#f0f9f4' : fichiersDrop.length > 0 ? '#f0f9f4' : 'white',
+                    }}>
+                    <input
+                      ref={multiFileRef}
+                      type="file"
+                      accept=".pdf"
+                      multiple
+                      className="hidden"
+                      onChange={e => {
+                        const files = Array.from(e.target.files || []).filter(f => f.type === 'application/pdf')
+                        setFichiersDrop(files)
+                      }}
+                    />
                     <div className="w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center"
-                      style={{ background: fichierNom ? '#2d6a4f' : '#f3f4f6' }}>
-                      <svg className="w-5 h-5" fill="none" stroke={fichierNom ? 'white' : '#9ca3af'} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      style={{ background: fichiersDrop.length > 0 ? '#2d6a4f' : '#f3f4f6' }}>
+                      <svg className="w-5 h-5" fill="none" stroke={fichiersDrop.length > 0 ? 'white' : '#9ca3af'} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                     </div>
-                    {fichierNom
-                      ? <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>{fichierNom}</p>
-                      : <><p className="text-sm text-gray-500">Cliquez pour sélectionner</p><p className="text-xs text-gray-400 mt-1">PDF uniquement</p></>
-                    }
-                  </label>
-                  <button onClick={() => uploadPDF(dossierActif)} disabled={uploading || !fichierNom}
+                    {fichiersDrop.length > 0 ? (
+                      <div>
+                        {fichiersDrop.map((f, i) => (
+                          <p key={i} className="text-xs font-medium truncate" style={{ color: '#2d6a4f' }}>{f.name}</p>
+                        ))}
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-500">Glissez des PDF ici</p>
+                        <p className="text-xs text-gray-400 mt-1">ou cliquez pour sélectionner (multi-fichiers)</p>
+                      </>
+                    )}
+                  </div>
+
+                  <button onClick={() => uploadFichiers(dossierActif, fichiersDrop)} disabled={uploading || fichiersDrop.length === 0}
                     className="mt-3 w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-40"
                     style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                    {uploading ? 'Upload...' : 'Uploader le document'}
+                    {uploading ? 'Upload...' : `Uploader ${fichiersDrop.length > 0 ? `(${fichiersDrop.length} fichier${fichiersDrop.length > 1 ? 's' : ''})` : ''}`}
                   </button>
+
+                  {/* Liste documents existants */}
+                  {documentsActif.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pièces jointes</p>
+                      {documentsActif.map(doc => (
+                        <div key={doc.id} className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 bg-gray-50">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: '#fee2e2' }}>
+                              <svg className="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </div>
+                            <p className="text-xs text-gray-700 truncate">{doc.nom_fichier}</p>
+                          </div>
+                          <button onClick={() => supprimerDocument(doc, dossierActif.id)}
+                            className="text-red-400 hover:text-red-600 text-xs ml-2 flex-shrink-0">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Relance IA */}
@@ -439,19 +675,25 @@ export default function DossiersPage() {
                         style={canalRelance === canal
                           ? { background: canal === 'whatsapp' ? '#25D366' : '#2d6a4f', color: 'white', borderColor: 'transparent' }
                           : { background: 'white', color: '#6b7280', borderColor: '#e5e7eb' }}>
-                        {canal === 'whatsapp' ? (
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                          </svg>
-                        ) : (
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                        )}
                         {canal === 'whatsapp' ? 'WhatsApp' : 'Email'}
                       </button>
                     ))}
                   </div>
+
+                  {/* Sélecteur modèle */}
+                  {modeles.filter(m => m.canal === canalRelance).length > 0 && (
+                    <div className="mb-3">
+                      <label className="block text-xs text-gray-500 mb-1.5">Utiliser un modèle</label>
+                      <select
+                        onChange={e => e.target.value && genererContenu(dossierActif, e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="">Générer avec l'IA</option>
+                        {modeles.filter(m => m.canal === canalRelance).map(m => (
+                          <option key={m.id} value={m.id}>{m.nom} ({m.type_impot})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <button onClick={() => genererContenu(dossierActif)} disabled={generatingEmail}
                     className="w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50 mb-3"
@@ -472,7 +714,7 @@ export default function DossiersPage() {
 
                         {canalRelance === 'whatsapp' && !dossierActif.clients.telephone && (
                           <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg mb-2">
-                            ⚠️ Numéro non renseigné pour ce client — le message sera copié dans le presse-papier
+                            Numéro non renseigné — le message sera copié dans le presse-papier
                           </p>
                         )}
 
@@ -500,8 +742,10 @@ export default function DossiersPage() {
         {/* Onglets */}
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
           {[
-            { key: 'dossiers', label: 'Dossiers fiscaux' },
+            { key: 'dossiers', label: 'Dossiers' },
             { key: 'historique', label: `Relances (${relances.length})` },
+            { key: 'modeles', label: `Modèles (${modeles.length})` },
+            { key: 'audit', label: `Audit (${auditLogs.length})` },
           ].map(o => (
             <button key={o.key} onClick={() => setOnglet(o.key as any)}
               className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap"
@@ -513,7 +757,7 @@ export default function DossiersPage() {
           ))}
         </div>
 
-        {/* Filtres */}
+        {/* ===== ONGLET DOSSIERS ===== */}
         {onglet === 'dossiers' && (
           <>
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
@@ -587,7 +831,7 @@ export default function DossiersPage() {
                             <span className={`text-xs px-3 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>{STATUT_LABELS[d.statut]}</span>
                           </td>
                           <td className="px-5 py-4">
-                            <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
+                            <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value, d)}
                               className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none bg-white">
                               <option value="en_attente">En attente</option>
                               <option value="recu">Reçu</option>
@@ -597,7 +841,7 @@ export default function DossiersPage() {
                           </td>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-1.5">
-                              <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichierNom('') }}
+                              <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id) }}
                                 className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                                 Gérer
                               </button>
@@ -641,7 +885,7 @@ export default function DossiersPage() {
                           Échéance : {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
                         </p>
                         <div className="flex gap-1.5">
-                          <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichierNom('') }}
+                          <button onClick={() => { setDossierActif(d); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); chargerDocuments(d.id) }}
                             className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                             Gérer
                           </button>
@@ -657,7 +901,7 @@ export default function DossiersPage() {
           </>
         )}
 
-        {/* Historique relances */}
+        {/* ===== ONGLET HISTORIQUE ===== */}
         {onglet === 'historique' && (
           <div>
             {relances.length === 0 ? (
@@ -666,7 +910,6 @@ export default function DossiersPage() {
               </div>
             ) : (
               <>
-                {/* Desktop */}
                 <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                   <table className="w-full">
                     <thead>
@@ -696,7 +939,7 @@ export default function DossiersPage() {
                           </td>
                           <td className="px-5 py-4">
                             <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${r.canal === 'whatsapp' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                              {r.canal === 'whatsapp' ? '💬 WhatsApp' : '✉️ Email'}
+                              {r.canal === 'whatsapp' ? 'WhatsApp' : 'Email'}
                             </span>
                           </td>
                           <td className="px-5 py-4 text-sm text-gray-500">
@@ -710,14 +953,13 @@ export default function DossiersPage() {
                     </tbody>
                   </table>
                 </div>
-                {/* Mobile */}
                 <div className="md:hidden space-y-3">
                   {relances.map(r => (
                     <div key={r.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
                         <p className="font-semibold text-gray-800 text-sm">{r.clients?.raison_sociale}</p>
                         <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${r.canal === 'whatsapp' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {r.canal === 'whatsapp' ? '💬' : '✉️'}
+                          {r.canal === 'whatsapp' ? 'WA' : 'Email'}
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 mb-1">{r.dossiers_fiscaux?.type_impot} {r.dossiers_fiscaux?.periode_annee}</p>
@@ -727,6 +969,148 @@ export default function DossiersPage() {
                   ))}
                 </div>
               </>
+            )}
+          </div>
+        )}
+
+        {/* ===== ONGLET MODELES ===== */}
+        {onglet === 'modeles' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-gray-500">Modèles de relance personnalisés par type d'impôt</p>
+              <button onClick={() => setShowModeleForm(!showModeleForm)}
+                className="px-4 py-2 rounded-xl text-white text-sm font-medium"
+                style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+                + Nouveau modèle
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {showModeleForm && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                  className="bg-white rounded-2xl border border-gray-100 p-5 mb-5 shadow-sm">
+                  <h3 className="font-semibold text-gray-800 mb-4">Créer un modèle</h3>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Variables disponibles : <code className="bg-gray-100 px-1 rounded">{'{client}'}</code>, <code className="bg-gray-100 px-1 rounded">{'{type_impot}'}</code>, <code className="bg-gray-100 px-1 rounded">{'{periode}'}</code>, <code className="bg-gray-100 px-1 rounded">{'{echeance}'}</code>
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Nom du modèle</label>
+                      <input value={modeleNom} onChange={e => setModeleNom(e.target.value)}
+                        placeholder="Ex: Relance TVA urgente"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Type d'impôt</label>
+                      <select value={modeleTypeImpot} onChange={e => setModeleTypeImpot(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="TVA">TVA</option>
+                        <option value="IRPP">IRPP</option>
+                        <option value="IS">IS</option>
+                        <option value="acompte">Acompte</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Canal</label>
+                      <select value={modeleCanal} onChange={e => setModeleCanal(e.target.value as any)}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="email">Email</option>
+                        <option value="whatsapp">WhatsApp</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Contenu</label>
+                    <textarea value={modeleContenu} onChange={e => setModeleContenu(e.target.value)}
+                      placeholder="Madame, Monsieur,&#10;&#10;Nous vous relançons concernant votre déclaration {type_impot} de {periode} pour {client}. L'échéance est le {echeance}."
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm h-32 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={sauvegarderModele} disabled={!modeleNom.trim() || !modeleContenu.trim()}
+                      className="px-5 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
+                      style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                      Sauvegarder
+                    </button>
+                    <button onClick={() => setShowModeleForm(false)}
+                      className="px-5 py-2.5 rounded-xl text-sm border border-gray-200 text-gray-600">
+                      Annuler
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {modeles.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                <p className="text-gray-400 text-sm">Aucun modèle créé</p>
+                <p className="text-gray-300 text-xs mt-1">Créez des modèles pour accélérer vos relances</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {modeles.map(m => (
+                  <div key={m.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-semibold text-gray-800 text-sm">{m.nom}</p>
+                        <div className="flex gap-2 mt-1">
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>{m.type_impot}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${m.canal === 'whatsapp' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {m.canal === 'whatsapp' ? 'WhatsApp' : 'Email'}
+                          </span>
+                        </div>
+                      </div>
+                      <button onClick={() => supprimerModele(m.id)} className="text-red-400 hover:text-red-600 text-sm">✕</button>
+                    </div>
+                    <p className="text-xs text-gray-500 line-clamp-3 mt-2">{m.contenu}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===== ONGLET AUDIT ===== */}
+        {onglet === 'audit' && (
+          <div>
+            {auditLogs.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                <p className="text-gray-400 text-sm">Aucun log d'audit</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                      {['Date', 'Collaborateur', 'Action', 'Détails'].map(h => (
+                        <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-white uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((log, i) => (
+                      <tr key={log.id} className="border-b border-gray-50 hover:bg-green-50 transition-colors"
+                        style={{ background: i % 2 === 0 ? 'white' : '#fafffe' }}>
+                        <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="px-5 py-3 text-sm">
+                          <span className="font-medium text-gray-700">
+                            {log.collaborateurs ? `${log.collaborateurs.prenom} ${log.collaborateurs.nom}` : 'Système'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="text-xs font-mono px-2 py-1 rounded-lg" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                            {log.action.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-sm text-gray-500 max-w-xs">
+                          <p className="truncate">{log.details}</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
