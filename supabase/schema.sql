@@ -1,9 +1,8 @@
 -- ============================================================
--- FiscAI — Schema complet
+-- FiscAI — Schema complet et final
 -- Supabase SQL Editor → New query → Run
 -- ============================================================
 
--- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
@@ -21,16 +20,20 @@ CREATE TABLE collaborateurs (
 
 ALTER TABLE collaborateurs ENABLE ROW LEVEL SECURITY;
 
+-- Tous voient tous les collaborateurs (pour les listes d'assignation)
 CREATE POLICY "collab_select" ON collaborateurs
   FOR SELECT TO authenticated USING (true);
 
+-- Chacun insère uniquement son propre profil (à l'inscription)
 CREATE POLICY "collab_insert" ON collaborateurs
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 
+-- Chacun modifie uniquement son propre profil
+-- Changement de rôle géré via /api/set-role (service role)
 CREATE POLICY "collab_update" ON collaborateurs
   FOR UPDATE TO authenticated USING (auth.uid() = id);
 
--- DELETE géré uniquement via service role (API /delete-account)
+-- Suppression via /api/delete-account (service role) uniquement
 
 -- ============================================================
 -- 2. CLIENTS
@@ -49,10 +52,11 @@ CREATE TABLE clients (
 
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 
--- Admin voit tout, collaborateur voit ses clients
+-- Collaborateur voit ses clients + les non assignés ; admin voit tout
 CREATE POLICY "clients_select" ON clients
   FOR SELECT TO authenticated USING (
     collaborateur_id = auth.uid()
+    OR collaborateur_id IS NULL
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
@@ -65,6 +69,7 @@ CREATE POLICY "clients_insert" ON clients
 CREATE POLICY "clients_update" ON clients
   FOR UPDATE TO authenticated USING (
     collaborateur_id = auth.uid()
+    OR collaborateur_id IS NULL
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
@@ -92,13 +97,14 @@ CREATE TABLE dossiers_fiscaux (
 
 ALTER TABLE dossiers_fiscaux ENABLE ROW LEVEL SECURITY;
 
+-- Accès via collaborateur_id du dossier OU via client assigné
 CREATE POLICY "dossiers_select" ON dossiers_fiscaux
   FOR SELECT TO authenticated USING (
     collaborateur_id = auth.uid()
     OR EXISTS (
       SELECT 1 FROM clients c
       WHERE c.id = dossiers_fiscaux.client_id
-      AND c.collaborateur_id = auth.uid()
+      AND (c.collaborateur_id = auth.uid() OR c.collaborateur_id IS NULL)
     )
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
@@ -115,7 +121,7 @@ CREATE POLICY "dossiers_update" ON dossiers_fiscaux
     OR EXISTS (
       SELECT 1 FROM clients c
       WHERE c.id = dossiers_fiscaux.client_id
-      AND c.collaborateur_id = auth.uid()
+      AND (c.collaborateur_id = auth.uid() OR c.collaborateur_id IS NULL)
     )
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
@@ -144,9 +150,12 @@ CREATE POLICY "documents_select" ON documents
   FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM dossiers_fiscaux d
+      JOIN clients c ON c.id = d.client_id
       WHERE d.id = documents.dossier_id
       AND (
         d.collaborateur_id = auth.uid()
+        OR c.collaborateur_id = auth.uid()
+        OR c.collaborateur_id IS NULL
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -156,9 +165,12 @@ CREATE POLICY "documents_insert" ON documents
   FOR INSERT TO authenticated WITH CHECK (
     EXISTS (
       SELECT 1 FROM dossiers_fiscaux d
+      JOIN clients c ON c.id = d.client_id
       WHERE d.id = documents.dossier_id
       AND (
         d.collaborateur_id = auth.uid()
+        OR c.collaborateur_id = auth.uid()
+        OR c.collaborateur_id IS NULL
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -168,9 +180,11 @@ CREATE POLICY "documents_delete" ON documents
   FOR DELETE TO authenticated USING (
     EXISTS (
       SELECT 1 FROM dossiers_fiscaux d
+      JOIN clients c ON c.id = d.client_id
       WHERE d.id = documents.dossier_id
       AND (
         d.collaborateur_id = auth.uid()
+        OR c.collaborateur_id = auth.uid()
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -196,9 +210,12 @@ CREATE POLICY "relances_select" ON relances
   FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM dossiers_fiscaux d
+      JOIN clients c ON c.id = d.client_id
       WHERE d.id = relances.dossier_id
       AND (
         d.collaborateur_id = auth.uid()
+        OR c.collaborateur_id = auth.uid()
+        OR c.collaborateur_id IS NULL
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -208,9 +225,12 @@ CREATE POLICY "relances_insert" ON relances
   FOR INSERT TO authenticated WITH CHECK (
     EXISTS (
       SELECT 1 FROM dossiers_fiscaux d
+      JOIN clients c ON c.id = d.client_id
       WHERE d.id = relances.dossier_id
       AND (
         d.collaborateur_id = auth.uid()
+        OR c.collaborateur_id = auth.uid()
+        OR c.collaborateur_id IS NULL
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -230,7 +250,6 @@ CREATE TABLE modeles_relance (
 
 ALTER TABLE modeles_relance ENABLE ROW LEVEL SECURITY;
 
--- Tous les collaborateurs authentifiés peuvent lire et gérer les modèles
 CREATE POLICY "modeles_select" ON modeles_relance
   FOR SELECT TO authenticated USING (true);
 
@@ -257,9 +276,12 @@ CREATE POLICY "commentaires_select" ON commentaires_dossiers
   FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM dossiers_fiscaux d
+      JOIN clients c ON c.id = d.client_id
       WHERE d.id = commentaires_dossiers.dossier_id
       AND (
         d.collaborateur_id = auth.uid()
+        OR c.collaborateur_id = auth.uid()
+        OR c.collaborateur_id IS NULL
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -269,9 +291,12 @@ CREATE POLICY "commentaires_insert" ON commentaires_dossiers
   FOR INSERT TO authenticated WITH CHECK (
     EXISTS (
       SELECT 1 FROM dossiers_fiscaux d
+      JOIN clients c ON c.id = d.client_id
       WHERE d.id = commentaires_dossiers.dossier_id
       AND (
         d.collaborateur_id = auth.uid()
+        OR c.collaborateur_id = auth.uid()
+        OR c.collaborateur_id IS NULL
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -301,9 +326,12 @@ CREATE POLICY "historique_select" ON historique_statuts
   FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM dossiers_fiscaux d
+      JOIN clients c ON c.id = d.client_id
       WHERE d.id = historique_statuts.dossier_id
       AND (
         d.collaborateur_id = auth.uid()
+        OR c.collaborateur_id = auth.uid()
+        OR c.collaborateur_id IS NULL
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -325,7 +353,6 @@ CREATE TABLE audit_logs (
 
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Admin voit tout, collaborateur voit ses propres logs
 CREATE POLICY "audit_select" ON audit_logs
   FOR SELECT TO authenticated USING (
     collaborateur_id = auth.uid()
@@ -337,24 +364,22 @@ CREATE POLICY "audit_insert" ON audit_logs
 
 -- ============================================================
 -- STORAGE BUCKETS
--- (À créer manuellement dans Storage si non existants)
--- Bucket: documents-fiscaux  → privé
--- Bucket: avatars            → public
+-- Créer manuellement dans Storage si non existants :
+-- • documents-fiscaux  → privé
+-- • avatars            → public
 --
--- Policy avatars (public read) :
+-- Policies Storage (SQL Editor) :
+--
 -- CREATE POLICY "avatars_public_read" ON storage.objects
 --   FOR SELECT USING (bucket_id = 'avatars');
 --
--- Policy avatars (owner write) :
 -- CREATE POLICY "avatars_owner_write" ON storage.objects
---   FOR ALL TO authenticated USING (
---     bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]
---   ) WITH CHECK (
---     bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]
---   );
+--   FOR ALL TO authenticated
+--   USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1])
+--   WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
 --
--- Policy documents-fiscaux (authenticated access) :
 -- CREATE POLICY "docs_fiscaux_auth" ON storage.objects
---   FOR ALL TO authenticated USING (bucket_id = 'documents-fiscaux')
+--   FOR ALL TO authenticated
+--   USING (bucket_id = 'documents-fiscaux')
 --   WITH CHECK (bucket_id = 'documents-fiscaux');
 -- ============================================================

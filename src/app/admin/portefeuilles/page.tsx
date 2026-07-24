@@ -29,7 +29,13 @@ export default function PortefeuillesPage() {
   }
 
   async function attribuerClient(clientId: string, collaborateurId: string) {
-    await supabase.from('clients').update({ collaborateur_id: collaborateurId || null }).eq('id', clientId)
+    const res = await fetch("/api/assign-client", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, collaborateurId })
+    })
+    const data = await res.json()
+    if (!res.ok) { alert(data.error || "Erreur attribution client"); return }
     charger()
   }
 
