@@ -95,6 +95,11 @@ ALTER TABLE dossiers_fiscaux ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "dossiers_select" ON dossiers_fiscaux
   FOR SELECT TO authenticated USING (
     collaborateur_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM clients c
+      WHERE c.id = dossiers_fiscaux.client_id
+      AND c.collaborateur_id = auth.uid()
+    )
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
@@ -107,6 +112,11 @@ CREATE POLICY "dossiers_insert" ON dossiers_fiscaux
 CREATE POLICY "dossiers_update" ON dossiers_fiscaux
   FOR UPDATE TO authenticated USING (
     collaborateur_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM clients c
+      WHERE c.id = dossiers_fiscaux.client_id
+      AND c.collaborateur_id = auth.uid()
+    )
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
