@@ -52,11 +52,10 @@ CREATE TABLE clients (
 
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 
--- Collaborateur voit ses clients + les non assignés ; admin voit tout
+-- Collaborateur voit uniquement ses clients ; admin voit tout
 CREATE POLICY "clients_select" ON clients
   FOR SELECT TO authenticated USING (
     collaborateur_id = auth.uid()
-    OR collaborateur_id IS NULL
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
@@ -69,7 +68,6 @@ CREATE POLICY "clients_insert" ON clients
 CREATE POLICY "clients_update" ON clients
   FOR UPDATE TO authenticated USING (
     collaborateur_id = auth.uid()
-    OR collaborateur_id IS NULL
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
@@ -91,20 +89,19 @@ CREATE TABLE dossiers_fiscaux (
   periode_annee    INTEGER NOT NULL,
   date_echeance    DATE,
   statut           TEXT NOT NULL DEFAULT 'en_attente'
-                   CHECK (statut IN ('en_attente', 'en_cours', 'depose', 'valide', 'rejete')),
+                   CHECK (statut IN ('en_attente', 'recu', 'valide', 'televerse_otr')),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE dossiers_fiscaux ENABLE ROW LEVEL SECURITY;
 
--- Accès via collaborateur_id du dossier OU via client assigné
+-- Accès via client assigné uniquement
 CREATE POLICY "dossiers_select" ON dossiers_fiscaux
   FOR SELECT TO authenticated USING (
-    collaborateur_id = auth.uid()
-    OR EXISTS (
+    EXISTS (
       SELECT 1 FROM clients c
       WHERE c.id = dossiers_fiscaux.client_id
-      AND (c.collaborateur_id = auth.uid() OR c.collaborateur_id IS NULL)
+      AND c.collaborateur_id = auth.uid()
     )
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
@@ -117,18 +114,21 @@ CREATE POLICY "dossiers_insert" ON dossiers_fiscaux
 
 CREATE POLICY "dossiers_update" ON dossiers_fiscaux
   FOR UPDATE TO authenticated USING (
-    collaborateur_id = auth.uid()
-    OR EXISTS (
+    EXISTS (
       SELECT 1 FROM clients c
       WHERE c.id = dossiers_fiscaux.client_id
-      AND (c.collaborateur_id = auth.uid() OR c.collaborateur_id IS NULL)
+      AND c.collaborateur_id = auth.uid()
     )
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
 CREATE POLICY "dossiers_delete" ON dossiers_fiscaux
   FOR DELETE TO authenticated USING (
-    collaborateur_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM clients c
+      WHERE c.id = dossiers_fiscaux.client_id
+      AND c.collaborateur_id = auth.uid()
+    )
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
@@ -155,7 +155,7 @@ CREATE POLICY "documents_select" ON documents
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        OR c.collaborateur_id IS NULL
+        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -170,7 +170,7 @@ CREATE POLICY "documents_insert" ON documents
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        OR c.collaborateur_id IS NULL
+        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -215,7 +215,7 @@ CREATE POLICY "relances_select" ON relances
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        OR c.collaborateur_id IS NULL
+        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -230,7 +230,7 @@ CREATE POLICY "relances_insert" ON relances
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        OR c.collaborateur_id IS NULL
+        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -281,7 +281,7 @@ CREATE POLICY "commentaires_select" ON commentaires_dossiers
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        OR c.collaborateur_id IS NULL
+        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -296,7 +296,7 @@ CREATE POLICY "commentaires_insert" ON commentaires_dossiers
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        OR c.collaborateur_id IS NULL
+        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -331,7 +331,7 @@ CREATE POLICY "historique_select" ON historique_statuts
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        OR c.collaborateur_id IS NULL
+        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )

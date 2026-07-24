@@ -211,7 +211,7 @@ export default function DossiersPage() {
   }
 
   async function sauvegarderDossier() {
-    if (!clientId || !dateEcheance) return
+    if (!clientId || !dateEcheance) { toast('Client et date d\'échéance requis', 'error'); return }
     setSaving(true)
     const payload = {
       client_id: clientId,
@@ -221,12 +221,14 @@ export default function DossiersPage() {
       date_echeance: dateEcheance,
     }
     if (dossierEnEdition) {
-      await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
+      const { error } = await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
+      if (error) { toast('Erreur modification : ' + error.message, 'error'); setSaving(false); return }
       await logAudit('MODIFICATION_DOSSIER', `Dossier ${typeImpot} modifié pour le client ${clients.find(c => c.id === clientId)?.raison_sociale}`)
       toast('Dossier modifié avec succès')
     } else {
       const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('dossiers_fiscaux').insert({ ...payload, statut: 'en_attente', collaborateur_id: user?.id })
+      const { error } = await supabase.from('dossiers_fiscaux').insert({ ...payload, statut: 'en_attente', collaborateur_id: user?.id })
+      if (error) { toast('Erreur création : ' + error.message, 'error'); setSaving(false); return }
       await logAudit('CREATION_DOSSIER', `Nouveau dossier ${typeImpot} créé pour ${clients.find(c => c.id === clientId)?.raison_sociale}`)
       toast('Dossier créé avec succès')
     }
@@ -238,21 +240,23 @@ export default function DossiersPage() {
     if (!dossierASupprimer) return
     setSupprimant(true)
     await logAudit('SUPPRESSION_DOSSIER', `Dossier ${dossierASupprimer.type_impot} de ${dossierASupprimer.clients?.raison_sociale} supprimé`)
-    await supabase.from('dossiers_fiscaux').delete().eq('id', dossierASupprimer.id)
+    const { error } = await supabase.from('dossiers_fiscaux').delete().eq('id', dossierASupprimer.id)
+    if (error) { toast('Erreur suppression : ' + error.message, 'error'); setSupprimant(false); return }
     toast('Dossier supprimé', 'error')
     setDossierASupprimer(null); charger(); setSupprimant(false)
   }
 
   async function changerStatut(id: string, statut: string, dossier: Dossier) {
     const { data: { user } } = await supabase.auth.getUser()
-    // Enregistrer dans l'historique
-    await supabase.from('historique_statuts').insert({
+    const { error: histError } = await supabase.from('historique_statuts').insert({
       dossier_id: id,
       collaborateur_id: user?.id,
       ancien_statut: dossier.statut,
       nouveau_statut: statut,
     })
-    await supabase.from('dossiers_fiscaux').update({ statut }).eq('id', id)
+    if (histError) console.warn('Historique non enregistré:', histError.message)
+    const { error } = await supabase.from('dossiers_fiscaux').update({ statut }).eq('id', id)
+    if (error) { toast('Erreur changement statut : ' + error.message, 'error'); return }
     await logAudit('CHANGEMENT_STATUT', `Statut de ${dossier.clients?.raison_sociale} (${dossier.type_impot}) : ${STATUT_LABELS[dossier.statut]} → ${STATUT_LABELS[statut]}`)
     toast(`Statut mis à jour : ${STATUT_LABELS[statut]}`)
     charger()
@@ -290,12 +294,13 @@ export default function DossiersPage() {
         toast(`Erreur upload ${file.name}: ${error.message}`, 'error')
         continue
       }
-      await supabase.from('documents').insert({
+      const { error: dbError } = await supabase.from('documents').insert({
         dossier_id: dossier.id,
         nom_fichier: file.name,
         url_stockage: path,
         type_document: file.type
       })
+      if (dbError) { toast(`Erreur enregistrement ${file.name}: ${dbError.message}`, 'error'); continue }
       success++
     }
     if (success > 0) {
@@ -367,40 +372,52 @@ export default function DossiersPage() {
   }
 
   async function envoyerRelance(dossier: Dossier) {
-    if (!emailContenu.trim()) return
+    if (!emailContenu.trim()) { toast('Rédigez ou générez un message avant d\'envoyer', 'error'); return }
     setSendingRelance(true)
     try {
       if (canalRelance === 'whatsapp') {
-        const tel = (dossier.clients.telephone || '').replace(/[^0-9]/g, '')
-        const msg = encodeURIComponent(emailContenu)
-        if (tel) {
-          window.open(`https://wa.me/${tel}?text=${msg}`, '_blank')
-        } else {
-          await navigator.clipboard.writeText(emailContenu)
-          toast('Numéro non renseigné — message copié', 'warning')
+        const tel = (dossier.clients.telephone || '').replace(/[^0-9+]/g, '')
+        if (!tel) {
+          toast('Numéro WhatsApp non renseigné pour ce client — ajoutez-le dans sa fiche', 'error')
+          setSendingRelance(false)
+          return
         }
-        await supabase.from('relances').insert({
+        const msg = encodeURIComponent(emailContenu)
+        window.open(`https://wa.me/${tel}?text=${msg}`, '_blank')
+        const { error } = await supabase.from('relances').insert({
           dossier_id: dossier.id, client_id: dossier.client_id,
           contenu_email: emailContenu, statut: 'envoye_whatsapp', canal: 'whatsapp',
         })
-        await logAudit('RELANCE_WHATSAPP', `Relance WhatsApp envoyée à ${dossier.clients.raison_sociale}`)
-        setRelanceEnvoyee('whatsapp')
-        toast('Relance WhatsApp envoyée')
+        if (error) { toast('Relance ouverte mais non enregistrée : ' + error.message, 'warning') }
+        else {
+          await logAudit('RELANCE_WHATSAPP', `Relance WhatsApp envoyée à ${dossier.clients.raison_sociale}`)
+          setRelanceEnvoyee('whatsapp')
+          toast('Relance WhatsApp envoyée')
+        }
       } else {
+        const email = dossier.clients.email_contact?.trim()
+        if (!email) {
+          toast('Email non renseigné pour ce client — ajoutez-le dans sa fiche', 'error')
+          setSendingRelance(false)
+          return
+        }
         const emailjs = (await import('@emailjs/browser')).default
         await emailjs.send(
           process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
           process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-          { to_email: dossier.clients.email_contact, from_name: 'Experts Afrique Conseils', message: emailContenu },
+          { to_email: email, from_name: 'Experts Afrique Conseils', message: emailContenu },
           process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
         )
-        await supabase.from('relances').insert({
+        const { error } = await supabase.from('relances').insert({
           dossier_id: dossier.id, client_id: dossier.client_id,
           contenu_email: emailContenu, statut: 'envoye', canal: 'email',
         })
-        await logAudit('RELANCE_EMAIL', `Relance email envoyée à ${dossier.clients.raison_sociale}`)
-        setRelanceEnvoyee('email')
-        toast('Relance email envoyée avec succès')
+        if (error) { toast('Email envoyé mais non enregistré : ' + error.message, 'warning') }
+        else {
+          await logAudit('RELANCE_EMAIL', `Relance email envoyée à ${dossier.clients.raison_sociale}`)
+          setRelanceEnvoyee('email')
+          toast('Relance email envoyée avec succès')
+        }
       }
     } catch (err: any) {
       toast('Erreur envoi : ' + (err?.message || 'Vérifiez vos clés EmailJS'), 'error')
