@@ -116,19 +116,19 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-hidden">
-        {!loading && liens.map((lien, i) => {
+        {!loading && liens.map((lien) => {
           const actif = pathname === lien.href
           return (
-            <motion.div key={lien.href} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }} whileHover={{ x: 3 }}>
+            <div key={lien.href}>
               <Link href={lien.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:translate-x-1"
                 style={actif
                   ? { background: 'rgba(232,163,23,0.15)', color: '#e8a317', borderLeft: '3px solid #e8a317' }
                   : { color: 'rgba(255,255,255,0.65)', borderLeft: '3px solid transparent' }}>
                 <span style={{ color: actif ? '#e8a317' : 'rgba(255,255,255,0.5)' }}>{lien.icon}</span>
                 {lien.label}
               </Link>
-            </motion.div>
+            </div>
           )
         })}
 

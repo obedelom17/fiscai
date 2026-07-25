@@ -43,7 +43,6 @@ export default function ClientsPage() {
   const [telephone, setTelephone] = useState('')
   const [saving, setSaving] = useState(false)
   const [supprimant, setSupprimant] = useState(false)
-  const [exportingId, setExportingId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => { charger() }, [])
@@ -92,25 +91,6 @@ export default function ClientsPage() {
     setClientASupprimer(null); charger(); setSupprimant(false)
   }
 
-  async function exporterBulletin(client: Client) {
-    setExportingId(client.id)
-    try {
-      const res = await fetch(`/api/export-pdf?client_id=${client.id}`)
-      if (!res.ok) throw new Error('Erreur export')
-      const html = await res.text()
-      const blob = new Blob([html], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `bulletin-fiscal-${client.raison_sociale.replace(/[^a-zA-Z0-9]/g, '-')}.html`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast('Bulletin exporté avec succès')
-    } catch {
-      toast('Erreur lors de l\'export', 'error')
-    }
-    setExportingId(null)
-  }
 
   const clientsFiltres = clients.filter(c =>
     c.raison_sociale.toLowerCase().includes(recherche.toLowerCase()) || c.nif.includes(recherche)
@@ -282,12 +262,7 @@ export default function ClientsPage() {
                       <td className="px-5 py-4 text-sm text-gray-500">{c.telephone || '—'}</td>
                       <td className="px-5 py-4">
                         <div className="flex gap-1.5">
-                          <button onClick={() => exporterBulletin(c)} disabled={exportingId === c.id}
-                            className="text-xs px-2.5 py-1.5 rounded-lg font-medium disabled:opacity-50"
-                            style={{ background: '#fff8ed', color: '#e8a317' }}>
-                            {exportingId === c.id ? '...' : 'Export'}
-                          </button>
-                          <button onClick={() => ouvrirFormulaire(c)}
+<button onClick={() => ouvrirFormulaire(c)}
                             className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                             Modifier
                           </button>
@@ -326,12 +301,7 @@ export default function ClientsPage() {
                       {c.telephone && <p className="text-xs text-gray-400">{c.telephone}</p>}
                     </div>
                     <div className="flex gap-1.5 flex-shrink-0 ml-2">
-                      <button onClick={() => exporterBulletin(c)} disabled={exportingId === c.id}
-                        className="text-xs px-2.5 py-1.5 rounded-lg font-medium disabled:opacity-50"
-                        style={{ background: '#fff8ed', color: '#e8a317' }}>
-                        {exportingId === c.id ? '...' : 'Export'}
-                      </button>
-                      <button onClick={() => ouvrirFormulaire(c)}
+<button onClick={() => ouvrirFormulaire(c)}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                         Modifier
                       </button>

@@ -66,6 +66,9 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erreur serveur')
+      if (data.waLinks?.length > 0) {
+        data.waLinks.forEach((url: string) => window.open(url, '_blank'))
+      }
       setMessages(prev => [...prev, { role: 'assistant', content: data.reponse }])
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Désolé, une erreur est survenue. Veuillez réessayer.' }])

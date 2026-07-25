@@ -818,8 +818,14 @@ export default function DossiersPage() {
                           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm h-32 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none mb-2" />
 
                         {canalRelance === 'whatsapp' && !dossierActif.clients.telephone && (
-                          <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg mb-2">
-                            Numéro non renseigné — le message sera copié dans le presse-papier
+                          <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg mb-2">
+                            Numéro WhatsApp non renseigné — ajoutez-le dans la fiche client avant d'envoyer
+                          </p>
+                        )}
+
+                        {canalRelance === 'email' && !dossierActif.clients.email_contact && (
+                          <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg mb-2">
+                            Email non renseigné — ajoutez-le dans la fiche client avant d'envoyer
                           </p>
                         )}
 
