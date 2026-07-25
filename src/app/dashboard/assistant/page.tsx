@@ -9,18 +9,34 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
+const MSG_INITIAL: Message = {
+  role: 'assistant',
+  content: 'Bonjour. Je suis FiscAl, votre assistant fiscal intelligent. Posez-moi vos questions sur vos dossiers clients, échéances OTR ou obligations fiscales togolaises.'
+}
+
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Bonjour. Je suis FiscAl, votre assistant fiscal intelligent. Posez-moi vos questions sur vos dossiers clients, échéances OTR ou obligations fiscales togolaises.' }
-  ])
+  const [messages, setMessages] = useState<Message[]>([MSG_INITIAL])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [contexte, setContexte] = useState('')
+  const [convId, setConvId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
-  useEffect(() => { chargerContexte() }, [])
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    chargerContexte()
+    chargerConversation()
+  }, [])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Sauvegarder à chaque changement de messages (hors message initial seul)
+  useEffect(() => {
+    if (messages.length > 1) sauvegarder(messages)
+  }, [messages])
 
   async function chargerContexte() {
     try {
@@ -30,7 +46,6 @@ export default function AssistantPage() {
         .select('type_impot, statut, date_echeance, periode_mois, periode_annee, clients(raison_sociale)')
         .order('date_echeance', { ascending: true })
         .limit(20)
-
       const ctx = `
 CLIENTS (${clients?.length || 0}) :
 ${clients?.map((c: any) => `- ${c.raison_sociale} (NIF: ${c.nif}, Régime: ${c.regime_fiscal})`).join('\n') || 'Aucun'}
@@ -44,6 +59,52 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
     }
   }
 
+  async function chargerConversation() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('conversations_assistant')
+        .select('id, messages')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (data && data.messages?.length > 0) {
+        setConvId(data.id)
+        setMessages(data.messages)
+      }
+    } catch {
+      // Pas de conversation existante — OK
+    }
+  }
+
+  async function sauvegarder(msgs: Message[]) {
+    if (saving) return
+    setSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      if (convId) {
+        await supabase
+          .from('conversations_assistant')
+          .update({ messages: msgs, updated_at: new Date().toISOString() })
+          .eq('id', convId)
+      } else {
+        const { data } = await supabase
+          .from('conversations_assistant')
+          .insert({ user_id: user.id, messages: msgs })
+          .select('id')
+          .single()
+        if (data) setConvId(data.id)
+      }
+    } catch (e) {
+      console.error('Erreur sauvegarde conversation:', e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function envoyer() {
     if (!input.trim() || loading) return
     const userMsg = input.trim()
@@ -51,13 +112,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
     const newMessages: Message[] = [...messages, { role: 'user', content: userMsg }]
     setMessages(newMessages)
     setLoading(true)
-
-    // Historique complet envoyé à l'API (mémoire de conversation)
-    const historique = newMessages.slice(0, -1).map(m => ({
-      role: m.role,
-      content: m.content
-    }))
-
+    const historique = newMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
     try {
       const res = await fetch('/api/assistant', {
         method: 'POST',
@@ -70,15 +125,21 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
         data.waLinks.forEach((url: string) => window.open(url, '_blank'))
       }
       setMessages(prev => [...prev, { role: 'assistant', content: data.reponse }])
-    } catch (err) {
+    } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Désolé, une erreur est survenue. Veuillez réessayer.' }])
     } finally {
       setLoading(false)
     }
   }
 
-  function reinitialiser() {
-    setMessages([{ role: 'assistant', content: 'Bonjour. Je suis FiscAl, votre assistant fiscal intelligent. Posez-moi vos questions sur vos dossiers clients, échéances OTR ou obligations fiscales togolaises.' }])
+  async function reinitialiser() {
+    const msgs = [MSG_INITIAL]
+    setMessages(msgs)
+    // Supprimer la conversation en base
+    if (convId) {
+      await supabase.from('conversations_assistant').delete().eq('id', convId)
+      setConvId(null)
+    }
   }
 
   const suggestionsList = [
@@ -107,12 +168,13 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
 
       <div className="flex-1 flex flex-col overflow-hidden px-4 md:px-8 py-4 md:py-6 gap-4">
 
-        {/* Indicateur mémoire */}
+        {/* Indicateur */}
         {messages.length > 2 && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs flex-shrink-0"
             style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
             Historique actif — {Math.floor((messages.length - 1) / 2)} échange(s) en mémoire
+            {saving && <span className="ml-2 text-gray-400">Sauvegarde...</span>}
           </div>
         )}
 
@@ -156,43 +218,32 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
                 transition={{ duration: 0.3 }}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-3`}>
                 {msg.role === 'assistant' && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 300 }}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 shadow-md"
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 shadow-md"
                     style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
                     <span className="text-white text-xs font-bold">F</span>
-                  </motion.div>
+                  </div>
                 )}
-                <motion.div
+                <div
                   className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${msg.role === 'user' ? 'rounded-br-sm' : 'rounded-bl-sm border border-gray-100'}`}
                   style={msg.role === 'user'
                     ? { background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)', color: 'white' }
                     : { background: '#f8fafb', color: '#374151' }}>
                   {msg.content}
-                </motion.div>
+                </div>
                 {msg.role === 'user' && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 300 }}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1"
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1"
                     style={{ background: '#f0f4f1' }}>
                     <svg className="w-4 h-4" fill="none" stroke="#2d6a4f" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                  </motion.div>
+                  </div>
                 )}
               </motion.div>
             ))}
           </AnimatePresence>
 
           {loading && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex justify-start gap-3">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start gap-3">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md"
                 style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
                 <span className="text-white text-xs font-bold">F</span>
@@ -214,11 +265,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
         </div>
 
         {/* Input */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 flex items-center gap-3 flex-shrink-0">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 flex items-center gap-3 flex-shrink-0">
           <input value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && envoyer()}
             placeholder="Ex: Quels clients ont des dossiers TVA en attente ?"
@@ -232,7 +279,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
             </svg>
             Envoyer
           </motion.button>
-        </motion.div>
+        </div>
       </div>
     </div>
   )
