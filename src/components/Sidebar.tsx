@@ -32,8 +32,14 @@ export default function Sidebar() {
           notifs.push({ id: d.id, message: `${d.clients?.raison_sociale} — ${d.type_impot} échéance le ${ech.toLocaleDateString('fr-FR')}`, type: 'urgent' })
         }
       })
-      setNotifications(notifs)
-      notifs.forEach(n => toast(n.message, n.type === 'retard' ? 'error' : 'warning'))
+      setNotifications(prev => {
+        // Only show toasts for new notifications (not on initial load after first render)
+        const prevIds = new Set(prev.map(p => p.id))
+        notifs.filter(n => !prevIds.has(n.id)).forEach(n =>
+          toast(n.message, n.type === 'retard' ? 'error' : 'warning')
+        )
+        return notifs
+      })
     }
     chargerNotifications()
     const channel = supabase.channel('dossiers-changes')

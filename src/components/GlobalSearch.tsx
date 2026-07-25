@@ -44,7 +44,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
     // Chercher aussi dossiers par nom client
     const { data: dossiersByClient } = await supabase
       .from('dossiers_fiscaux')
-      .select('id, type_impot, statut, periode_annee, clients(raison_sociale)')
+      .select('id, type_impot, statut, periode_annee, clients!inner(raison_sociale)')
       .ilike('clients.raison_sociale', `%${q}%`)
       .limit(5)
 

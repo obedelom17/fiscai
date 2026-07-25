@@ -317,7 +317,7 @@ export default function DossiersPage() {
 
   async function chargerDocuments(dossierId: string) {
     const { data, error } = await supabase.from('documents').select('*').eq('dossier_id', dossierId).order('created_at', { ascending: false })
-    console.log('[chargerDocuments]', dossierId, data, error)
+    
     setDocumentsActif(data || [])
   }
 

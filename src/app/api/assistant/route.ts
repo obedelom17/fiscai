@@ -85,9 +85,7 @@ async function executerTool(
     if (!email) return `Email non renseigné pour ${client.raison_sociale}. Ajoutez-le dans la fiche client.`
 
     try {
-      const emailjs = await import('@emailjs/browser')
-      // Côté serveur, on utilise l'API EmailJS REST
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+            const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
