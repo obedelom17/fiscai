@@ -15,16 +15,17 @@ CREATE TABLE collaborateurs (
   email      TEXT NOT NULL UNIQUE,
   role       TEXT NOT NULL DEFAULT 'collaborateur' CHECK (role IN ('admin', 'collaborateur')),
   avatar_url TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE collaborateurs ENABLE ROW LEVEL SECURITY;
 
--- Tous voient tous les collaborateurs (pour les listes d'assignation)
+-- Tous voient tous les collaborateurs (listes d'assignation, sidebar)
 CREATE POLICY "collab_select" ON collaborateurs
   FOR SELECT TO authenticated USING (true);
 
--- Chacun insère uniquement son propre profil (à l'inscription)
+-- Chacun insère uniquement son propre profil (inscription)
 CREATE POLICY "collab_insert" ON collaborateurs
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 
@@ -52,12 +53,10 @@ CREATE TABLE clients (
 
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 
--- Collaborateur voit uniquement ses clients ; admin voit tout
+-- SELECT : tous les clients visibles par tous (nécessaire pour le formulaire de création de dossier)
+-- La ségrégation se fait au niveau des dossiers, pas des clients
 CREATE POLICY "clients_select" ON clients
-  FOR SELECT TO authenticated USING (
-    collaborateur_id = auth.uid()
-    OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "clients_insert" ON clients
   FOR INSERT TO authenticated WITH CHECK (
@@ -88,6 +87,7 @@ CREATE TABLE dossiers_fiscaux (
   periode_mois     INTEGER CHECK (periode_mois BETWEEN 1 AND 12),
   periode_annee    INTEGER NOT NULL,
   date_echeance    DATE,
+  date_depot       TIMESTAMPTZ,                         -- date de réception du document
   statut           TEXT NOT NULL DEFAULT 'en_attente'
                    CHECK (statut IN ('en_attente', 'recu', 'valide', 'televerse_otr')),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -95,7 +95,6 @@ CREATE TABLE dossiers_fiscaux (
 
 ALTER TABLE dossiers_fiscaux ENABLE ROW LEVEL SECURITY;
 
--- Accès via client assigné uniquement
 CREATE POLICY "dossiers_select" ON dossiers_fiscaux
   FOR SELECT TO authenticated USING (
     EXISTS (
@@ -155,7 +154,6 @@ CREATE POLICY "documents_select" ON documents
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -170,7 +168,6 @@ CREATE POLICY "documents_insert" ON documents
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -215,7 +212,6 @@ CREATE POLICY "relances_select" ON relances
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -230,7 +226,6 @@ CREATE POLICY "relances_insert" ON relances
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -281,7 +276,6 @@ CREATE POLICY "commentaires_select" ON commentaires_dossiers
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -296,7 +290,6 @@ CREATE POLICY "commentaires_insert" ON commentaires_dossiers
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -315,7 +308,7 @@ CREATE TABLE historique_statuts (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   dossier_id       UUID NOT NULL REFERENCES dossiers_fiscaux(id) ON DELETE CASCADE,
   collaborateur_id UUID REFERENCES collaborateurs(id) ON DELETE SET NULL,
-  ancien_statut    TEXT NOT NULL,
+  ancien_statut    TEXT,                               -- nullable : premier changement depuis création
   nouveau_statut   TEXT NOT NULL,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -331,7 +324,6 @@ CREATE POLICY "historique_select" ON historique_statuts
       AND (
         d.collaborateur_id = auth.uid()
         OR c.collaborateur_id = auth.uid()
-        
         OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
       )
     )
@@ -353,14 +345,53 @@ CREATE TABLE audit_logs (
 
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
+-- Tous les collaborateurs authentifiés voient tous les logs (onglet Audit du cabinet)
 CREATE POLICY "audit_select" ON audit_logs
-  FOR SELECT TO authenticated USING (
-    collaborateur_id = auth.uid()
-    OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "audit_insert" ON audit_logs
   FOR INSERT TO authenticated WITH CHECK (true);
+
+-- ============================================================
+-- 10. CONVERSATIONS ASSISTANT IA
+-- ============================================================
+CREATE TABLE conversations_assistant (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  messages   JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE conversations_assistant ENABLE ROW LEVEL SECURITY;
+
+-- Chacun voit et gère uniquement ses propres conversations
+CREATE POLICY "conversations_select" ON conversations_assistant
+  FOR SELECT TO authenticated USING (user_id = auth.uid());
+
+CREATE POLICY "conversations_insert" ON conversations_assistant
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "conversations_update" ON conversations_assistant
+  FOR UPDATE TO authenticated USING (user_id = auth.uid());
+
+CREATE POLICY "conversations_delete" ON conversations_assistant
+  FOR DELETE TO authenticated USING (user_id = auth.uid());
+
+-- ============================================================
+-- INDEXES (performance)
+-- ============================================================
+CREATE INDEX idx_dossiers_client_id    ON dossiers_fiscaux(client_id);
+CREATE INDEX idx_dossiers_statut       ON dossiers_fiscaux(statut);
+CREATE INDEX idx_dossiers_echeance     ON dossiers_fiscaux(date_echeance);
+CREATE INDEX idx_relances_dossier_id   ON relances(dossier_id);
+CREATE INDEX idx_relances_client_id    ON relances(client_id);
+CREATE INDEX idx_audit_collab_id       ON audit_logs(collaborateur_id);
+CREATE INDEX idx_audit_created         ON audit_logs(created_at DESC);
+CREATE INDEX idx_docs_dossier_id       ON documents(dossier_id);
+CREATE INDEX idx_historique_dossier_id ON historique_statuts(dossier_id);
+CREATE INDEX idx_commentaires_dossier  ON commentaires_dossiers(dossier_id);
+CREATE INDEX idx_conversations_user_id ON conversations_assistant(user_id);
 
 -- ============================================================
 -- STORAGE BUCKETS
