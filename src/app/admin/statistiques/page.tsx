@@ -414,12 +414,12 @@ export default function StatistiquesPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-gray-100">
-              <table className="w-full">
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full min-w-[400px]">
                 <thead>
                   <tr style={{ background: '#f8fafb' }}>
                     {['Client', "Type d'impôt", 'Échéance', 'Statut'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -430,18 +430,18 @@ export default function StatistiquesPage() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05 }}
                       className="border-t border-gray-50 hover:bg-red-50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-800">{d.clients?.raison_sociale}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-semibold px-2 py-1 rounded-lg"
+                      <td className="px-3 py-3 text-sm font-medium text-gray-800 max-w-[120px] truncate">{d.clients?.raison_sociale}</td>
+                      <td className="px-3 py-3">
+                        <span className="text-xs font-semibold px-2 py-1 rounded-lg whitespace-nowrap"
                           style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                           {d.type_impot}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-red-600">
+                      <td className="px-3 py-3 text-sm font-semibold text-red-600 whitespace-nowrap">
                         {new Date(d.date_echeance).toLocaleDateString('fr-FR')}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">
+                      <td className="px-3 py-3">
+                        <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium whitespace-nowrap">
                           {d.statut}
                         </span>
                       </td>

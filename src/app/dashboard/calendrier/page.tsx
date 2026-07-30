@@ -107,7 +107,7 @@ export default function CalendrierPage() {
 
       <div className="px-4 md:px-8 py-6 md:py-8">
         {/* Stats mois */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           {[
             { label: 'Échéances ce mois', value: statsM.total, color: '#1a3c2e' },
             { label: 'En attente', value: statsM.en_attente, color: '#d97706' },

@@ -865,7 +865,7 @@ export default function DossiersPage() {
         </AnimatePresence>
 
         {/* Onglets */}
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1 scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
           {[
             { key: 'dossiers', label: 'Dossiers' },
             { key: 'historique', label: `Relances (${relances.length})` },
