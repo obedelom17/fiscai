@@ -13,6 +13,10 @@ type Result = {
   href: string
 }
 
+type ClientRow = { id: string; raison_sociale: string; nif: string; secteur_activite: string }
+type DossierRow = { id: string; type_impot: string; statut: string; periode_annee: number; clients: { raison_sociale: string } | null }
+type RelanceRow = { id: string; contenu_email: string; canal: string; date_envoi: string; clients: { raison_sociale: string } | null }
+
 export default function GlobalSearch({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Result[]>([])
@@ -37,20 +41,19 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
 
     const r: Result[] = []
 
-    ;(clients || []).forEach((c: any) => {
+    ;(clients as ClientRow[] || []).forEach((c) => {
       r.push({ id: c.id, type: 'client', titre: c.raison_sociale, sousTitre: `NIF: ${c.nif} · ${c.secteur_activite}`, href: '/dashboard/clients' })
     })
 
-    // Chercher aussi dossiers par nom client
     const { data: dossiersByClient } = await supabase
       .from('dossiers_fiscaux')
       .select('id, type_impot, statut, periode_annee, clients!inner(raison_sociale)')
       .ilike('clients.raison_sociale', `%${q}%`)
       .limit(5)
 
-    const allDossiers = [...(dossiers || []), ...(dossiersByClient || [])]
+    const allDossiers = [...(dossiers as DossierRow[] || []), ...(dossiersByClient as DossierRow[] || [])]
     const seen = new Set<string>()
-    allDossiers.forEach((d: any) => {
+    allDossiers.forEach((d) => {
       if (seen.has(d.id)) return
       seen.add(d.id)
       r.push({
@@ -61,7 +64,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
       })
     })
 
-    ;(relances || []).forEach((rel: any) => {
+    ;(relances as RelanceRow[] || []).forEach((rel) => {
       r.push({
         id: rel.id, type: 'relance',
         titre: `Relance ${rel.canal === 'whatsapp' ? 'WhatsApp' : 'Email'} — ${rel.clients?.raison_sociale}`,

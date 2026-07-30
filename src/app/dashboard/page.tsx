@@ -2,41 +2,17 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import GlobalSearch from '@/components/GlobalSearch'
-
-type Dossier = {
-  id: string
-  type_impot: string
-  statut: string
-  date_echeance: string
-  clients: { raison_sociale: string }
-}
-
-type Relance = {
-  id: string
-  contenu_email: string
-  date_envoi: string
-  canal?: string
-  clients: { raison_sociale: string }
-  dossiers_fiscaux: { type_impot: string; periode_annee: number }
-}
-
-type AuditLog = {
-  id: string
-  action: string
-  details: string
-  created_at: string
-  collaborateurs: { nom: string; prenom: string } | null
-}
+import type { DossierFiscal, Relance, AuditLog } from '@/lib/types'
 
 export default function DashboardHome() {
   const [user, setUser] = useState<{ prenom: string; nom: string; avatar_url: string | null; role: string } | null>(null)
   const [stats, setStats] = useState({ clients: 0, dossiers: 0, enAttente: 0, alertes: 0 })
-  const [dossiersUrgents, setDossiersUrgents] = useState<Dossier[]>([])
+  const [dossiersUrgents, setDossiersUrgents] = useState<DossierFiscal[]>([])
   const [dernieresRelances, setDernieresRelances] = useState<Relance[]>([])
   const [activiteRecente, setActiviteRecente] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,15 +59,16 @@ export default function DashboardHome() {
 
     const dans5 = new Date(); dans5.setDate(dans5.getDate() + 5)
     const aujourd = new Date()
-    const urgents = (dossiers || []).filter((d: any) => {
+    const list = (dossiers || []) as DossierFiscal[]
+    const urgents = list.filter((d) => {
       const ech = new Date(d.date_echeance)
       return ech <= dans5 && d.statut !== 'televerse_otr'
     })
 
     setStats({
       clients: clients?.length || 0,
-      dossiers: dossiers?.length || 0,
-      enAttente: (dossiers || []).filter((d: any) => d.statut === 'en_attente').length,
+      dossiers: list.length,
+      enAttente: list.filter((d) => d.statut === 'en_attente').length,
       alertes: urgents.length,
     })
     setDossiersUrgents(urgents.slice(0, 5))

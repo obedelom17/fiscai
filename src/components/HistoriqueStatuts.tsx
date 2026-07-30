@@ -11,19 +11,8 @@ type HistoriqueEntry = {
   collaborateurs: { nom: string; prenom: string } | null
 }
 
-const STATUT_LABELS: Record<string, string> = {
-  en_attente: 'En attente',
-  recu: 'Reçu',
-  valide: 'Validé',
-  televerse_otr: 'Téléversé OTR',
-}
-
-const STATUT_COLORS: Record<string, string> = {
-  en_attente: '#d97706',
-  recu: '#3b82f6',
-  valide: '#2d6a4f',
-  televerse_otr: '#8b5cf6',
-}
+import { STATUT_LABELS, STATUT_HEX } from '@/lib/types'
+const STATUT_COLORS = STATUT_HEX
 
 export default function HistoriqueStatuts({ dossierId }: { dossierId: string }) {
   const [historique, setHistorique] = useState<HistoriqueEntry[]>([])

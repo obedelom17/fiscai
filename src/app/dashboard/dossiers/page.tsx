@@ -60,30 +60,9 @@ const STATUT_COULEURS: Record<string, string> = {
   valide: 'bg-green-100 text-green-700',
   televerse_otr: 'bg-purple-100 text-purple-700',
 }
-const STATUT_LABELS: Record<string, string> = {
-  en_attente: 'En attente',
-  recu: 'Reçu',
-  valide: 'Validé',
-  televerse_otr: 'Téléversé OTR',
-}
+import { STATUT_LABELS, ACOMPTES, getAcompteEcheance, formatPeriode } from '@/lib/types'
+
 const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
-
-// 4 acomptes avec leurs échéances fixes OTR Togo
-const ACOMPTES = [
-  { numero: 1, label: '1er acompte', mois: 1,  jour: 31, description: '31 janvier' },
-  { numero: 2, label: '2ème acompte', mois: 5,  jour: 31, description: '31 mai' },
-  { numero: 3, label: '3ème acompte', mois: 7,  jour: 31, description: '31 juillet' },
-  { numero: 4, label: '4ème acompte', mois: 10, jour: 31, description: '31 octobre' },
-]
-
-function getAcompteEcheance(numeroAcompte: number, annee: number): string {
-  const a = ACOMPTES.find(a => a.numero === numeroAcompte)
-  if (!a) return ''
-  // Calculer le dernier jour réel du mois (ex: 31 mai = ok, 31 nov = 30)
-  const lastDay = new Date(annee, a.mois, 0).getDate()
-  const jour = Math.min(a.jour, lastDay)
-  return `${annee}-${String(a.mois).padStart(2,'0')}-${String(jour).padStart(2,'0')}`
-}
 
 export default function DossiersPage() {
   const { toast } = useToast()
@@ -437,8 +416,8 @@ export default function DossiersPage() {
           toast('Relance email envoyée avec succès')
         }
       }
-    } catch (err: any) {
-      toast('Erreur envoi : ' + (err?.message || 'Vérifiez vos clés EmailJS'), 'error')
+    } catch (err: unknown) {
+      toast('Erreur envoi : ' + (err instanceof Error ? err.message : 'Vérifiez vos clés EmailJS'), 'error')
     } finally {
       setSendingRelance(false)
       charger()

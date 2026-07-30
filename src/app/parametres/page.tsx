@@ -75,8 +75,8 @@ export default function ParametresPage() {
       setMfaFactorId('')
       setAfficherDesactiver(false)
       setCode2FA('')
-    } catch (e: any) {
-      setErreur2FA(e.message || 'Erreur')
+    } catch (e: unknown) {
+      setErreur2FA(e instanceof Error ? e.message : 'Erreur')
     }
     setDesactivant2FA(false)
   }
@@ -152,8 +152,8 @@ export default function ParametresPage() {
       // Déconnexion et redirection
       await supabase.auth.signOut()
       router.push('/auth')
-    } catch (e: any) {
-      setMsgDelete(e.message || 'Erreur réseau')
+    } catch (e: unknown) {
+      setMsgDelete(e instanceof Error ? e.message : 'Erreur réseau')
       setDeletingAccount(false)
     }
   }

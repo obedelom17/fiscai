@@ -59,8 +59,8 @@ export default function TwoFactorPage() {
       setSecret(data.totp.secret)
       setFactorId(data.id)
       setEtape('scan')
-    } catch (e: any) {
-      setErreur(e.message || "Erreur lors de l'activation")
+    } catch (e: unknown) {
+      setErreur(e instanceof Error ? e.message : "Erreur lors de l'activation")
     }
     setLoading(false)
   }
@@ -78,8 +78,8 @@ export default function TwoFactorPage() {
 
       await supabase.auth.refreshSession()
       router.push('/dashboard')
-    } catch (e: any) {
-      setErreur(e.message || 'Erreur de vérification')
+    } catch (e: unknown) {
+      setErreur(e instanceof Error ? e.message : 'Erreur de vérification')
     }
     setLoading(false)
   }
@@ -97,8 +97,8 @@ export default function TwoFactorPage() {
 
       await supabase.auth.mfa.unenroll({ factorId })
       setDejaActif(false); setEtape('setup'); setCodeDesactiver(''); setFactorId('')
-    } catch (e: any) {
-      setErreur(e.message || 'Erreur lors de la désactivation')
+    } catch (e: unknown) {
+      setErreur(e instanceof Error ? e.message : 'Erreur lors de la désactivation')
     }
     setLoading(false)
   }
