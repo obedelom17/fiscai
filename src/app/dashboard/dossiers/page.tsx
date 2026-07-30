@@ -68,6 +68,23 @@ const STATUT_LABELS: Record<string, string> = {
 }
 const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
 
+// 4 acomptes avec leurs échéances fixes OTR Togo
+const ACOMPTES = [
+  { numero: 1, label: '1er acompte', mois: 1,  jour: 31, description: '31 janvier' },
+  { numero: 2, label: '2ème acompte', mois: 5,  jour: 31, description: '31 mai' },
+  { numero: 3, label: '3ème acompte', mois: 7,  jour: 31, description: '31 juillet' },
+  { numero: 4, label: '4ème acompte', mois: 10, jour: 31, description: '31 octobre' },
+]
+
+function getAcompteEcheance(numeroAcompte: number, annee: number): string {
+  const a = ACOMPTES.find(a => a.numero === numeroAcompte)
+  if (!a) return ''
+  // Calculer le dernier jour réel du mois (ex: 31 mai = ok, 31 nov = 30)
+  const lastDay = new Date(annee, a.mois, 0).getDate()
+  const jour = Math.min(a.jour, lastDay)
+  return `${annee}-${String(a.mois).padStart(2,'0')}-${String(jour).padStart(2,'0')}`
+}
+
 export default function DossiersPage() {
   const { toast } = useToast()
   const [dossiers, setDossiers] = useState<Dossier[]>([])
@@ -92,6 +109,7 @@ export default function DossiersPage() {
   const [sendingRelance, setSendingRelance] = useState(false)
   const [relanceEnvoyee, setRelanceEnvoyee] = useState<'email' | 'whatsapp' | null>(null)
   const [filtreStatut, setFiltreStatut] = useState('tous')
+  const [numeroAcompte, setNumeroAcompte] = useState(1)
   const [canalRelance, setCanalRelance] = useState<'email' | 'whatsapp'>('email')
   // Drag & Drop
   const [dragOver, setDragOver] = useState(false)
@@ -205,7 +223,7 @@ export default function DossiersPage() {
       setDateEcheance(dossier.date_echeance.split('T')[0])
     } else {
       setDossierEnEdition(null)
-      setClientId(''); setTypeImpot('TVA'); setPeriodeMois(1); setPeriodeAnnee(new Date().getFullYear()); setDateEcheance('')
+      setClientId(''); setTypeImpot('TVA'); setPeriodeMois(1); setPeriodeAnnee(new Date().getFullYear()); setDateEcheance(''); setNumeroAcompte(1)
     }
     setShowForm(true)
   }
@@ -216,9 +234,9 @@ export default function DossiersPage() {
     const payload = {
       client_id: clientId,
       type_impot: typeImpot,
-      periode_mois: typeImpot === 'TVA' || typeImpot === 'acompte' ? periodeMois : null,
+      periode_mois: typeImpot === 'TVA' ? periodeMois : typeImpot === 'acompte' ? numeroAcompte : null,
       periode_annee: periodeAnnee,
-      date_echeance: dateEcheance,
+      date_echeance: typeImpot === 'acompte' ? getAcompteEcheance(numeroAcompte, periodeAnnee) : dateEcheance,
     }
     if (dossierEnEdition) {
       const { error } = await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
@@ -574,7 +592,7 @@ export default function DossiersPage() {
                     <option value="acompte">Acompte</option>
                   </select>
                 </div>
-                {(typeImpot === 'TVA' || typeImpot === 'acompte') && (
+                {typeImpot === 'TVA' && (
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Mois</label>
                     <select value={periodeMois} onChange={e => setPeriodeMois(Number(e.target.value))}
@@ -583,19 +601,35 @@ export default function DossiersPage() {
                     </select>
                   </div>
                 )}
+                {typeImpot === 'acompte' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Numéro d'acompte</label>
+                    <select value={numeroAcompte} onChange={e => setNumeroAcompte(Number(e.target.value))}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                      {ACOMPTES.map(a => (
+                        <option key={a.numero} value={a.numero}>{a.label} — {a.description}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Échéance automatique : {getAcompteEcheance(numeroAcompte, periodeAnnee) ? new Date(getAcompteEcheance(numeroAcompte, periodeAnnee)).toLocaleDateString('fr-FR') : '—'}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Année</label>
                   <input type="number" value={periodeAnnee} onChange={e => setPeriodeAnnee(Number(e.target.value))}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
+                {typeImpot !== 'acompte' && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Date d'échéance</label>
                   <input type="date" value={dateEcheance} onChange={e => setDateEcheance(e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
+                )}
               </div>
               <div className="flex gap-3 mt-5">
-                <motion.button onClick={sauvegarderDossier} disabled={saving || !clientId || !dateEcheance}
+                <motion.button onClick={sauvegarderDossier} disabled={saving || !clientId || (typeImpot !== 'acompte' && !dateEcheance)}
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
@@ -647,7 +681,7 @@ export default function DossiersPage() {
                 <div>
                   <h2 className="font-bold text-gray-800">{dossierActif.clients.raison_sociale}</h2>
                   <p className="text-sm text-gray-500 mt-0.5">
-                    {dossierActif.type_impot} — {dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] + ' ' : ''}{dossierActif.periode_annee} — Échéance : {new Date(dossierActif.date_echeance).toLocaleDateString('fr-FR')}
+                    {dossierActif.type_impot} — {dossierActif.type_impot === 'acompte' && dossierActif.periode_mois ? ACOMPTES[dossierActif.periode_mois-1]?.label + ' ' : dossierActif.periode_mois ? MOIS[dossierActif.periode_mois - 1] + ' ' : ''}{dossierActif.periode_annee} — Échéance : {new Date(dossierActif.date_echeance).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
                 <button onClick={() => { setDossierActif(null); setEmailContenu(''); setRelanceEnvoyee(null); setFichiersDrop([]); setDocumentsActif([]) }}
@@ -932,7 +966,9 @@ export default function DossiersPage() {
                             <span className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>{d.type_impot}</span>
                           </td>
                           <td className="px-5 py-4 text-sm text-gray-500">
-                            {d.periode_mois ? `${MOIS[d.periode_mois - 1]} ` : ''}{d.periode_annee}
+                            {d.type_impot === 'acompte' && d.periode_mois
+                              ? `${ACOMPTES[d.periode_mois - 1]?.label ?? d.periode_mois + 'e'} `
+                              : d.periode_mois ? `${MOIS[d.periode_mois - 1]} ` : ''}{d.periode_annee}
                           </td>
                           <td className="px-5 py-4 text-sm">
                             <span className={estEnRetard(d.date_echeance) && d.statut !== 'televerse_otr' ? 'text-red-600 font-semibold' : estUrgent(d.date_echeance) ? 'text-yellow-600 font-semibold' : 'text-gray-500'}>
@@ -987,7 +1023,7 @@ export default function DossiersPage() {
                         <div>
                           <p className="font-semibold text-gray-800 text-sm">{d.clients?.raison_sociale}</p>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            {d.type_impot} — {d.periode_mois ? MOIS[d.periode_mois - 1] + ' ' : ''}{d.periode_annee}
+                            {d.type_impot} — {d.type_impot === 'acompte' && d.periode_mois ? ACOMPTES[d.periode_mois-1]?.label + ' ' : d.periode_mois ? MOIS[d.periode_mois - 1] + ' ' : ''}{d.periode_annee}
                           </p>
                         </div>
                         <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUT_COULEURS[d.statut]}`}>{STATUT_LABELS[d.statut]}</span>
