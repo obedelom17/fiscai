@@ -4,11 +4,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRole } from '@/lib/useRole'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useToast } from '@/components/Toast'
 
 const SIDEBAR_KEY = 'fiscai_sidebar_collapsed'
+
+// IDs déjà notifiés — persistés en mémoire module (survit aux re-renders)
+const notifiedIds = new Set<string>()
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -18,10 +21,10 @@ export default function Sidebar() {
   const { toast } = useToast()
   const [user, setUser] = useState<{ prenom: string; nom: string; email: string; avatar_url: string | null } | null>(null)
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: string }[]>([])
-  const [open, setOpen] = useState(false)           // drawer mobile
-  const [collapsed, setCollapsed] = useState(false) // sidebar desktop rétractée
+  const [open, setOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const initialLoadDone = useRef(false)
 
-  // Persister l'état collapsed dans localStorage
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'true') setCollapsed(true)
@@ -38,7 +41,11 @@ export default function Sidebar() {
     async function chargerNotifications() {
       const dans5 = new Date(); dans5.setDate(dans5.getDate() + 5)
       const aujourd = new Date()
-      const { data } = await supabase.from('dossiers_fiscaux').select('*, clients(raison_sociale)').neq('statut', 'televerse_otr')
+      const { data } = await supabase
+        .from('dossiers_fiscaux')
+        .select('id, type_impot, date_echeance, clients(raison_sociale)')
+        .neq('statut', 'televerse_otr')
+
       const notifs: { id: string; message: string; type: string }[] = []
       data?.forEach((d: any) => {
         const ech = new Date(d.date_echeance)
@@ -48,18 +55,31 @@ export default function Sidebar() {
           notifs.push({ id: d.id, message: `${d.clients?.raison_sociale} — ${d.type_impot} échéance le ${ech.toLocaleDateString('fr-FR')}`, type: 'urgent' })
         }
       })
-      setNotifications(prev => {
-        const prevIds = new Set(prev.map(p => p.id))
-        notifs.filter(n => !prevIds.has(n.id)).forEach(n =>
-          toast(n.message, n.type === 'retard' ? 'error' : 'warning')
-        )
-        return notifs
-      })
+
+      // N'afficher le toast que si c'est la 1ère fois qu'on voit cet ID
+      // ET que le chargement initial est terminé (pas de spam au montage)
+      if (initialLoadDone.current) {
+        notifs.forEach(n => {
+          if (!notifiedIds.has(n.id)) {
+            notifiedIds.add(n.id)
+            toast(n.message, n.type === 'retard' ? 'error' : 'warning')
+          }
+        })
+      } else {
+        // Premier chargement : marquer tous comme vus sans toaster
+        notifs.forEach(n => notifiedIds.add(n.id))
+        initialLoadDone.current = true
+      }
+
+      setNotifications(notifs)
     }
+
     chargerNotifications()
-    const channel = supabase.channel('dossiers-changes')
+
+    const channel = supabase.channel('sidebar-dossiers')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dossiers_fiscaux' }, () => chargerNotifications())
       .subscribe()
+
     return () => { supabase.removeChannel(channel) }
   }, [])
 
@@ -114,172 +134,166 @@ export default function Sidebar() {
   ]
   const liens = isAdmin ? [...liensCollaborateur, ...liensAdmin] : liensCollaborateur
 
-  // Contenu sidebar (partagé desktop + drawer)
+  const NavLink = ({ lien, isDrawer }: { lien: typeof liensCollaborateur[0]; isDrawer: boolean }) => {
+    const actif = pathname === lien.href
+    return (
+      <Link
+        href={lien.href}
+        title={collapsed && !isDrawer ? lien.label : undefined}
+        className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all hover:translate-x-0.5 ${collapsed && !isDrawer ? 'justify-center px-0' : ''}`}
+        style={actif
+          ? { background: 'rgba(232,163,23,0.15)', color: '#e8a317', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid #e8a317' }
+          : { color: 'rgba(255,255,255,0.65)', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid transparent' }}>
+        <span style={{ color: actif ? '#e8a317' : 'rgba(255,255,255,0.5)' }} className="flex-shrink-0">{lien.icon}</span>
+        {(!collapsed || isDrawer) && <span className="truncate">{lien.label}</span>}
+      </Link>
+    )
+  }
+
+  const Cloche = ({ isDrawer }: { isDrawer: boolean }) => (
+    <Link href="/dashboard/dossiers"
+      className="relative p-1.5 rounded-lg inline-flex flex-shrink-0"
+      style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}
+      title="Notifications">
+      <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      </svg>
+      {notifications.length > 0 && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
+          style={{ background: '#dc2626', fontSize: '9px' }}>
+          {notifications.length}
+        </span>
+      )}
+    </Link>
+  )
+
   const SidebarContent = ({ isDrawer = false }: { isDrawer?: boolean }) => (
     <div className="flex flex-col h-full">
-      {/* Logo + bouton collapse */}
-      <div className="px-3 py-4 border-b border-white/10 flex items-center justify-between">
-        <div className={`flex items-center gap-3 min-w-0 ${collapsed && !isDrawer ? 'justify-center w-full' : ''}`}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
-            <span className="text-white text-base font-black">F</span>
-          </div>
-          {(!collapsed || isDrawer) && (
-            <div className="min-w-0">
-              <p className="text-white font-bold text-sm leading-none">FiscAl</p>
-              <p className="text-green-400 text-xs mt-0.5 truncate">Experts Afrique Conseils</p>
+
+      {/* ── Logo + collapse ── */}
+      <div className="px-3 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between gap-2">
+          {/* Logo — toujours visible, centré quand collapsed */}
+          <div className={`flex items-center gap-2 min-w-0 flex-1 ${collapsed && !isDrawer ? 'justify-center' : ''}`}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
+              <span className="text-white text-base font-black">F</span>
             </div>
+            {(!collapsed || isDrawer) && (
+              <div className="min-w-0">
+                <p className="text-white font-bold text-sm leading-none">FiscAl</p>
+                <p className="text-green-400 text-xs mt-0.5 truncate">Experts Afrique Conseils</p>
+              </div>
+            )}
+          </div>
+
+          {/* Bouton fermer drawer */}
+          {isDrawer && (
+            <button className="text-white/50 hover:text-white p-1 flex-shrink-0" onClick={() => setOpen(false)}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+
+          {/* Bouton collapse desktop — TOUJOURS à droite, pas décalé */}
+          {!isDrawer && (
+            <button
+              onClick={toggleCollapsed}
+              className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white flex-shrink-0 transition-colors"
+              title={collapsed ? 'Agrandir' : 'Réduire'}>
+              <svg className="w-4 h-4 transition-transform duration-200"
+                style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </button>
           )}
         </div>
-        {/* Bouton fermer drawer */}
-        {isDrawer && (
-          <button className="text-white/50 hover:text-white p-1" onClick={() => setOpen(false)}>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-        {/* Bouton collapse desktop */}
-        {!isDrawer && (
-          <button
-            onClick={toggleCollapsed}
-            className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg transition-all hover:bg-white/10 text-white/50 hover:text-white flex-shrink-0"
-            title={collapsed ? 'Agrandir la sidebar' : 'Réduire la sidebar'}
-          >
-            <svg className="w-4 h-4 transition-transform" style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
-        )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-hidden">
-        {!loading && liens.map((lien) => {
-          const actif = pathname === lien.href
-          return (
-            <div key={lien.href}>
-              <Link href={lien.href}
-                title={collapsed && !isDrawer ? lien.label : undefined}
-                className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all hover:translate-x-1 ${collapsed && !isDrawer ? 'justify-center' : ''}`}
-                style={actif
-                  ? { background: 'rgba(232,163,23,0.15)', color: '#e8a317', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid #e8a317' }
-                  : { color: 'rgba(255,255,255,0.65)', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid transparent' }}>
-                <span style={{ color: actif ? '#e8a317' : 'rgba(255,255,255,0.5)' }} className="flex-shrink-0">{lien.icon}</span>
-                {(!collapsed || isDrawer) && lien.label}
-              </Link>
-            </div>
-          )
-        })}
+      {/* ── Nav ── */}
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+        {!loading && liens.map(lien => (
+          <NavLink key={lien.href} lien={lien} isDrawer={isDrawer} />
+        ))}
 
-        {/* Compte */}
-        <div className="pt-4 mt-4 border-t border-white/10">
-          {(!collapsed || isDrawer) && (
+        {/* Section Compte */}
+        <div className="pt-4 mt-2 border-t border-white/10">
+          {(!collapsed || isDrawer) ? (
             <div className="flex items-center justify-between px-2.5 mb-2">
               <p className="text-xs text-white/30 uppercase tracking-wider">Compte</p>
-              {/* Cloche */}
-              <Link href="/dashboard/dossiers" className="relative p-1.5 rounded-lg inline-flex"
-                style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}>
-                <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {notifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
-                    style={{ background: '#dc2626', fontSize: '9px' }}>
-                    {notifications.length}
-                  </span>
-                )}
-              </Link>
+              <Cloche isDrawer={isDrawer} />
             </div>
-          )}
-
-          {/* Cloche seule quand collapsed */}
-          {collapsed && !isDrawer && (
+          ) : (
             <div className="flex justify-center mb-2">
-              <Link href="/dashboard/dossiers" className="relative p-1.5 rounded-lg inline-flex"
-                style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}
-                title="Notifications">
-                <svg className="w-5 h-5" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {notifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
-                    style={{ background: '#dc2626', fontSize: '9px' }}>
-                    {notifications.length}
-                  </span>
-                )}
-              </Link>
+              <Cloche isDrawer={isDrawer} />
             </div>
           )}
 
-          <motion.div whileHover={{ x: collapsed && !isDrawer ? 0 : 3 }}>
-            <Link href="/parametres"
-              title={collapsed && !isDrawer ? 'Paramètres' : undefined}
-              className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all ${collapsed && !isDrawer ? 'justify-center' : ''}`}
-              style={pathname === '/parametres'
-                ? { background: 'rgba(232,163,23,0.15)', color: '#e8a317', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid #e8a317' }
-                : { color: 'rgba(255,255,255,0.65)', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid transparent' }}>
-              <svg className="w-5 h-5 flex-shrink-0" style={{ color: pathname === '/parametres' ? '#e8a317' : 'rgba(255,255,255,0.5)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {(!collapsed || isDrawer) && 'Paramètres'}
-            </Link>
-          </motion.div>
+          <Link href="/parametres"
+            title={collapsed && !isDrawer ? 'Paramètres' : undefined}
+            className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all ${collapsed && !isDrawer ? 'justify-center px-0' : ''}`}
+            style={pathname === '/parametres'
+              ? { background: 'rgba(232,163,23,0.15)', color: '#e8a317', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid #e8a317' }
+              : { color: 'rgba(255,255,255,0.65)', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid transparent' }}>
+            <svg className="w-5 h-5 flex-shrink-0"
+              style={{ color: pathname === '/parametres' ? '#e8a317' : 'rgba(255,255,255,0.5)' }}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {(!collapsed || isDrawer) && <span className="truncate">Paramètres</span>}
+          </Link>
         </div>
       </nav>
 
-      {/* Profil + Déco */}
-      <div className="px-2 py-4 border-t border-white/10">
-        {user && (!collapsed || isDrawer) && (
-          <div className="flex items-center gap-3 px-2.5 py-3 rounded-xl mb-2" style={{ background: 'rgba(255,255,255,0.05)' }}>
+      {/* ── Profil + Déco ── */}
+      <div className="px-2 py-3 border-t border-white/10">
+        {user && (
+          <div className={`flex items-center gap-3 px-2 py-2.5 rounded-xl mb-1 ${collapsed && !isDrawer ? 'justify-center' : ''}`}
+            style={{ background: 'rgba(255,255,255,0.05)' }}>
             {user.avatar_url ? (
-              <img src={user.avatar_url} alt="Avatar" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+              <img src={user.avatar_url} alt="Avatar"
+                className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+                title={collapsed && !isDrawer ? `${user.prenom} ${user.nom}` : undefined} />
             ) : (
               <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                {user.prenom?.[0]}{user.nom?.[0]}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user.prenom} {user.nom}</p>
-              <p className="text-white/40 text-xs truncate">{isAdmin ? 'Administrateur' : 'Collaborateur'}</p>
-            </div>
-          </div>
-        )}
-        {user && collapsed && !isDrawer && (
-          <div className="flex justify-center mb-2">
-            {user.avatar_url ? (
-              <img src={user.avatar_url} alt="Avatar" className="w-8 h-8 rounded-lg object-cover" title={`${user.prenom} ${user.nom}`} />
-            ) : (
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
                 style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}
-                title={`${user.prenom} ${user.nom}`}>
+                title={collapsed && !isDrawer ? `${user.prenom} ${user.nom}` : undefined}>
                 {user.prenom?.[0]}{user.nom?.[0]}
+              </div>
+            )}
+            {(!collapsed || isDrawer) && (
+              <div className="min-w-0">
+                <p className="text-white text-xs font-semibold truncate">{user.prenom} {user.nom}</p>
+                <p className="text-white/40 text-xs truncate">{isAdmin ? 'Administrateur' : 'Collaborateur'}</p>
               </div>
             )}
           </div>
         )}
-        <motion.button onClick={deconnexion} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+
+        <button onClick={deconnexion}
           title={collapsed && !isDrawer ? 'Déconnexion' : undefined}
-          className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium ${collapsed && !isDrawer ? 'justify-center' : ''}`}
-          style={{ color: 'rgba(255,255,255,0.5)' }}>
+          className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm font-medium hover:bg-white/5 transition-colors ${collapsed && !isDrawer ? 'justify-center' : ''}`}
+          style={{ color: 'rgba(255,255,255,0.45)' }}>
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          {(!collapsed || isDrawer) && 'Déconnexion'}
-        </motion.button>
+          {(!collapsed || isDrawer) && <span className="truncate">Déconnexion</span>}
+        </button>
       </div>
     </div>
   )
 
   return (
     <>
-      {/* Topbar mobile */}
+      {/* ── Topbar mobile ── */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 border-b border-white/10"
         style={{ background: 'linear-gradient(135deg, #0f2318, #1a3c2e)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
             <span className="text-white text-sm font-black">F</span>
           </div>
           <span className="text-white font-bold text-sm">FiscAl</span>
@@ -296,7 +310,8 @@ export default function Sidebar() {
               </span>
             </Link>
           )}
-          <button onClick={() => setOpen(true)} className="p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.1)' }}>
+          <button onClick={() => setOpen(true)} className="p-2 rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.1)' }}>
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -304,16 +319,16 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Sidebar desktop rétractable */}
+      {/* ── Sidebar desktop ── */}
       <motion.aside
         animate={{ width: collapsed ? 64 : 224 }}
-        transition={{ type: 'tween', duration: 0.22 }}
+        transition={{ type: 'tween', duration: 0.2 }}
         className="hidden lg:flex h-screen flex-col sticky top-0 flex-shrink-0 overflow-hidden"
         style={{ background: 'linear-gradient(180deg, #0f2318 0%, #1a3c2e 100%)' }}>
         <SidebarContent />
       </motion.aside>
 
-      {/* Drawer mobile */}
+      {/* ── Drawer mobile ── */}
       <AnimatePresence>
         {open && (
           <>
@@ -323,7 +338,7 @@ export default function Sidebar() {
               onClick={() => setOpen(false)} />
             <motion.aside
               initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
-              transition={{ type: 'tween', duration: 0.25 }}
+              transition={{ type: 'tween', duration: 0.22 }}
               className="fixed top-0 left-0 h-full w-72 z-50 lg:hidden flex flex-col"
               style={{ background: 'linear-gradient(180deg, #0f2318 0%, #1a3c2e 100%)' }}>
               <SidebarContent isDrawer />

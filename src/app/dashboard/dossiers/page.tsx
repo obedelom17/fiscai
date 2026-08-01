@@ -1204,40 +1204,66 @@ export default function DossiersPage() {
                 <p className="text-gray-400 text-sm">Aucun log d'audit</p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-                      {['Date', 'Collaborateur', 'Action', 'Détails'].map(h => (
-                        <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-white uppercase tracking-wider">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditLogs.map((log, i) => (
-                      <tr key={log.id} className="border-b border-gray-50 hover:bg-green-50 transition-colors"
-                        style={{ background: i % 2 === 0 ? 'white' : '#fafffe' }}>
-                        <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
+              <>
+                {/* Vue desktop — table complète */}
+                <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[640px]">
+                      <thead>
+                        <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                          {['Date', 'Collaborateur', 'Action', 'Détails'].map(h => (
+                            <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-white uppercase tracking-wider whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {auditLogs.map((log, i) => (
+                          <tr key={log.id} className="border-b border-gray-50 hover:bg-green-50 transition-colors"
+                            style={{ background: i % 2 === 0 ? 'white' : '#fafffe' }}>
+                            <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
+                              {new Date(log.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="px-5 py-3 text-sm font-medium text-gray-700 whitespace-nowrap">
+                              {log.collaborateurs ? `${log.collaborateurs.prenom} ${log.collaborateurs.nom}` : 'Système'}
+                            </td>
+                            <td className="px-5 py-3 whitespace-nowrap">
+                              <span className="text-xs font-mono px-2 py-1 rounded-lg" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                                {log.action.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-sm text-gray-500 max-w-xs">
+                              <p className="truncate">{log.details}</p>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Vue mobile — cards empilées */}
+                <div className="md:hidden space-y-2">
+                  {auditLogs.map((log, i) => (
+                    <motion.div key={log.id}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                      className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-lg flex-shrink-0"
+                          style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
+                          {log.action.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
                           {new Date(log.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="px-5 py-3 text-sm">
-                          <span className="font-medium text-gray-700">
-                            {log.collaborateurs ? `${log.collaborateurs.prenom} ${log.collaborateurs.nom}` : 'Système'}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3">
-                          <span className="text-xs font-mono px-2 py-1 rounded-lg" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
-                            {log.action.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 text-sm text-gray-500 max-w-xs">
-                          <p className="truncate">{log.details}</p>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-gray-700 mb-1">
+                        {log.collaborateurs ? `${log.collaborateurs.prenom} ${log.collaborateurs.nom}` : 'Système'}
+                      </p>
+                      <p className="text-xs text-gray-500 leading-relaxed">{log.details}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
