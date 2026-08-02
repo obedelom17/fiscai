@@ -171,45 +171,50 @@ export default function Sidebar() {
     <div className="flex flex-col h-full">
 
       {/* ── Logo + collapse ── */}
-      <div className="px-3 py-4 border-b border-white/10">
-        <div className="flex items-center justify-between gap-2">
-          {/* Logo — toujours visible, centré quand collapsed */}
-          <div className={`flex items-center gap-2 min-w-0 flex-1 ${collapsed && !isDrawer ? 'justify-center' : ''}`}>
+      <div className="border-b border-white/10" style={{ padding: collapsed && !isDrawer ? '12px 0' : '12px' }}>
+        {collapsed && !isDrawer ? (
+          /* Mode collapsed : logo centré, bouton collapse en dessous */
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
+              <span className="text-white text-base font-black">F</span>
+            </div>
+            <button onClick={toggleCollapsed}
+              className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+              title="Agrandir">
+              <svg className="w-4 h-4" style={{ transform: 'rotate(180deg)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          /* Mode expanded : logo + nom + bouton sur la même ligne */
+          <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
               style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
               <span className="text-white text-base font-black">F</span>
             </div>
-            {(!collapsed || isDrawer) && (
-              <div className="min-w-0">
-                <p className="text-white font-bold text-sm leading-none">FiscAl</p>
-                <p className="text-green-400 text-xs mt-0.5 truncate">Experts Afrique Conseils</p>
-              </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-white font-bold text-sm leading-none">FiscAl</p>
+              <p className="text-green-400 text-xs mt-0.5 truncate">Experts Afrique Conseils</p>
+            </div>
+            {isDrawer ? (
+              <button className="text-white/50 hover:text-white p-1 flex-shrink-0" onClick={() => setOpen(false)}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            ) : (
+              <button onClick={toggleCollapsed}
+                className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white flex-shrink-0 transition-colors"
+                title="Réduire">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
             )}
           </div>
-
-          {/* Bouton fermer drawer */}
-          {isDrawer && (
-            <button className="text-white/50 hover:text-white p-1 flex-shrink-0" onClick={() => setOpen(false)}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-
-          {/* Bouton collapse desktop — TOUJOURS à droite, pas décalé */}
-          {!isDrawer && (
-            <button
-              onClick={toggleCollapsed}
-              className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white flex-shrink-0 transition-colors"
-              title={collapsed ? 'Agrandir' : 'Réduire'}>
-              <svg className="w-4 h-4 transition-transform duration-200"
-                style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              </svg>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* ── Nav ── */}
