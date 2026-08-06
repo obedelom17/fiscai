@@ -330,8 +330,8 @@ export default function AuthPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-5xl font-black text-white leading-tight mb-8">
-            Votre tour de<br />contrôle{' '}
-            <span style={{ color: '#e8a317' }}>fiscal<br />au Togo</span>
+            Vos dossiers fiscaux,{' '}
+            <span style={{ color: '#e8a317' }}>toujours<br />à jour</span>
           </motion.h1>
 
           <div className="space-y-4">

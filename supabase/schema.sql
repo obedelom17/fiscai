@@ -90,6 +90,15 @@ CREATE TABLE dossiers_fiscaux (
   date_depot       TIMESTAMPTZ,                         -- date de réception du document
   statut           TEXT NOT NULL DEFAULT 'en_attente'
                    CHECK (statut IN ('en_attente', 'recu', 'valide', 'televerse_otr')),
+  -- Facturation
+  honoraires       NUMERIC(12,2) DEFAULT 0,             -- honoraires du cabinet
+  decaissements    NUMERIC(12,2) DEFAULT 0,             -- frais avancés pour le client
+  montant_recu     NUMERIC(12,2) DEFAULT 0,             -- montant effectivement reçu
+  statut_paiement  TEXT NOT NULL DEFAULT 'non_facture'
+                   CHECK (statut_paiement IN ('non_facture','facture','partiellement_paye','paye')),
+  date_facturation DATE,                                -- date à laquelle la facture a été émise
+  date_paiement    DATE,                                -- date à laquelle le paiement a été reçu
+  notes_facturation TEXT,                               -- observations libres sur le paiement
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

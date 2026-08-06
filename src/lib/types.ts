@@ -4,6 +4,21 @@ export type Role = 'admin' | 'collaborateur'
 export type StatutDossier = 'en_attente' | 'recu' | 'valide' | 'televerse_otr'
 export type TypeImpot = 'TVA' | 'IRPP' | 'IS' | 'acompte'
 export type CanalRelance = 'email' | 'whatsapp'
+export type StatutPaiement = 'non_facture' | 'facture' | 'partiellement_paye' | 'paye'
+
+export const STATUT_PAIEMENT_LABELS: Record<StatutPaiement, string> = {
+  non_facture: 'Non facturé',
+  facture: 'Facturé',
+  partiellement_paye: 'Partiellement payé',
+  paye: 'Payé',
+}
+
+export const STATUT_PAIEMENT_COULEURS: Record<StatutPaiement, string> = {
+  non_facture: 'bg-gray-100 text-gray-600',
+  facture: 'bg-blue-100 text-blue-700',
+  partiellement_paye: 'bg-yellow-100 text-yellow-700',
+  paye: 'bg-green-100 text-green-700',
+}
 
 export const STATUT_LABELS: Record<string, string> = {
   en_attente: 'En attente',
@@ -80,6 +95,14 @@ export type DossierFiscal = {
   periode_mois: number | null
   periode_annee: number
   collaborateur_id: string
+  // Facturation
+  honoraires: number
+  decaissements: number
+  montant_recu: number
+  statut_paiement: StatutPaiement
+  date_facturation: string | null
+  date_paiement: string | null
+  notes_facturation: string | null
   clients?: { raison_sociale: string; email?: string; telephone?: string }
   collaborateurs?: { nom: string; prenom: string } | null
 }

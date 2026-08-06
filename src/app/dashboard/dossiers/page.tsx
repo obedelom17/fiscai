@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import DossierCommentaires from '@/components/DossierCommentaires'
 import HistoriqueStatuts from '@/components/HistoriqueStatuts'
 import GlobalSearch from '@/components/GlobalSearch'
+import DossierFacturation from '@/components/DossierFacturation'
 
 type Client = { id: string; raison_sociale: string; email_contact: string; telephone?: string }
 type Dossier = {
@@ -20,6 +21,16 @@ type Dossier = {
   periode_annee: number
   statut: string
   date_echeance: string
+  date_depot: string | null
+  collaborateur_id: string
+  // Facturation
+  honoraires: number
+  decaissements: number
+  montant_recu: number
+  statut_paiement: string
+  date_facturation: string | null
+  date_paiement: string | null
+  notes_facturation: string | null
   clients: { raison_sociale: string; email_contact: string; telephone?: string }
   collaborateurs: { nom: string; prenom: string } | null
 }
@@ -109,7 +120,7 @@ export default function DossiersPage() {
   const [showSuggestions, setShowSuggestions] = useState(true)
 
   const [showSearch, setShowSearch] = useState(false)
-  const [panelOnglet, setPanelOnglet] = useState<'relance' | 'commentaires' | 'historique'>('relance')
+  const [panelOnglet, setPanelOnglet] = useState<'relance' | 'commentaires' | 'historique' | 'facturation'>('relance')
 
   const fileRef = useRef<HTMLInputElement>(null)
   const multiFileRef = useRef<HTMLInputElement>(null)
@@ -673,6 +684,7 @@ export default function DossiersPage() {
                   { key: 'relance', label: 'Relance & Documents' },
                   { key: 'commentaires', label: 'Commentaires' },
                   { key: 'historique', label: 'Historique statuts' },
+                  { key: 'facturation', label: '💰 Facturation' },
                 ].map(o => (
                   <button key={o.key} onClick={() => setPanelOnglet(o.key as any)}
                     className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
@@ -690,6 +702,10 @@ export default function DossiersPage() {
 
               {panelOnglet === 'historique' && (
                 <HistoriqueStatuts dossierId={dossierActif.id} />
+              )}
+
+              {panelOnglet === 'facturation' && (
+                <DossierFacturation dossier={dossierActif as any} onUpdate={charger} />
               )}
 
               {panelOnglet === 'relance' && (

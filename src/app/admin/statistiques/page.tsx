@@ -14,6 +14,10 @@ type Dossier = {
   type_impot: string
   date_echeance: string
   date_depot: string | null
+  honoraires: number
+  decaissements: number
+  montant_recu: number
+  statut_paiement: string
   clients: { raison_sociale: string }
   collaborateurs: { nom: string; prenom: string } | null
 }
@@ -452,6 +456,73 @@ export default function StatistiquesPage() {
             </div>
           )}
         </motion.div>
+        {/* Récap Facturation */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-5">
+          <div className="px-6 py-4 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+            <h2 className="font-bold text-white">Récapitulatif de facturation</h2>
+            <p className="text-green-300 text-xs mt-0.5">Honoraires et décaissements — tous les dossiers</p>
+          </div>
+          <div className="p-5">
+            {/* KPIs facturation */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              {(() => {
+                const totalHonoraires = dossiers.reduce((s, d) => s + (Number(d.honoraires) || 0), 0)
+                const totalDecaissements = dossiers.reduce((s, d) => s + (Number(d.decaissements) || 0), 0)
+                const totalFacture = totalHonoraires + totalDecaissements
+                const totalRecu = dossiers.reduce((s, d) => s + (Number(d.montant_recu) || 0), 0)
+                const solde = totalFacture - totalRecu
+                return [
+                  { label: 'Total honoraires', value: totalHonoraires, color: '#1a3c2e' },
+                  { label: 'Total décaissements', value: totalDecaissements, color: '#2563eb' },
+                  { label: 'Total facturé', value: totalFacture, color: '#1a3c2e', bold: true },
+                  { label: 'Total reçu', value: totalRecu, color: '#16a34a' },
+                ].map(k => (
+                  <div key={k.label} className="rounded-xl p-4 border border-gray-100 bg-gray-50">
+                    <p className="text-xs text-gray-400 mb-1">{k.label}</p>
+                    <p className={`text-lg font-${k.bold ? 'bold' : 'semibold'}`} style={{ color: k.color }}>
+                      {k.value.toLocaleString('fr-FR')} FCFA
+                    </p>
+                  </div>
+                ))
+              })()}
+            </div>
+
+            {/* Solde global */}
+            {(() => {
+              const totalFacture = dossiers.reduce((s, d) => s + (Number(d.honoraires) || 0) + (Number(d.decaissements) || 0), 0)
+              const totalRecu = dossiers.reduce((s, d) => s + (Number(d.montant_recu) || 0), 0)
+              const solde = totalFacture - totalRecu
+              return (
+                <div className={`flex items-center justify-between px-4 py-3 rounded-xl mb-5 ${solde > 0 ? 'bg-red-50 border border-red-100' : 'bg-green-50 border border-green-100'}`}>
+                  <span className="text-sm font-medium text-gray-700">Solde total restant dû (tous clients)</span>
+                  <span className={`text-xl font-bold ${solde > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {solde.toLocaleString('fr-FR')} FCFA
+                  </span>
+                </div>
+              )
+            })()}
+
+            {/* Répartition par statut paiement */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { key: 'non_facture', label: 'Non facturé', color: 'bg-gray-100 text-gray-600' },
+                { key: 'facture', label: 'Facturé', color: 'bg-blue-100 text-blue-700' },
+                { key: 'partiellement_paye', label: 'Partiel.', color: 'bg-yellow-100 text-yellow-700' },
+                { key: 'paye', label: 'Payé', color: 'bg-green-100 text-green-700' },
+              ].map(s => (
+                <div key={s.key} className={`rounded-xl px-4 py-3 ${s.color}`}>
+                  <p className="text-xs font-semibold mb-1">{s.label}</p>
+                  <p className="text-2xl font-bold">
+                    {dossiers.filter(d => (d.statut_paiement || 'non_facture') === s.key).length}
+                  </p>
+                  <p className="text-xs mt-0.5 opacity-70">dossiers</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
       </div>
     </div>
   )
