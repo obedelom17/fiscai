@@ -100,6 +100,9 @@ export default function DossiersPage() {
   const [relanceEnvoyee, setRelanceEnvoyee] = useState<'email' | 'whatsapp' | null>(null)
   const [filtreStatut, setFiltreStatut] = useState('tous')
   const [numeroAcompte, setNumeroAcompte] = useState(1)
+  // États facturation dans le formulaire
+  const [fHonoraires, setFHonoraires] = useState(0)
+  const [fDecaissements, setFDecaissements] = useState(0)
   const [canalRelance, setCanalRelance] = useState<'email' | 'whatsapp'>('email')
   // Drag & Drop
   const [dragOver, setDragOver] = useState(false)
@@ -213,13 +216,14 @@ export default function DossiersPage() {
       setDateEcheance(dossier.date_echeance.split('T')[0])
     } else {
       setDossierEnEdition(null)
-      setClientId(''); setTypeImpot('TVA'); setPeriodeMois(1); setPeriodeAnnee(new Date().getFullYear()); setDateEcheance(''); setNumeroAcompte(1)
+      setClientId(''); setTypeImpot('TVA'); setPeriodeMois(1); setPeriodeAnnee(new Date().getFullYear()); setDateEcheance(''); setNumeroAcompte(1); setFHonoraires(0); setFDecaissements(0)
     }
     setShowForm(true)
   }
 
   async function sauvegarderDossier() {
-    if (!clientId || !dateEcheance) { toast('Client et date d\'échéance requis', 'error'); return }
+    if (!clientId) { toast('Veuillez sélectionner un client', 'error'); return }
+    if (typeImpot !== 'acompte' && !dateEcheance) { toast('La date d\'échéance est requise', 'error'); return }
     setSaving(true)
     const payload = {
       client_id: clientId,
@@ -227,6 +231,8 @@ export default function DossiersPage() {
       periode_mois: typeImpot === 'TVA' ? periodeMois : typeImpot === 'acompte' ? numeroAcompte : null,
       periode_annee: periodeAnnee,
       date_echeance: typeImpot === 'acompte' ? getAcompteEcheance(numeroAcompte, periodeAnnee) : dateEcheance,
+      honoraires: fHonoraires || 0,
+      decaissements: fDecaissements || 0,
     }
     if (dossierEnEdition) {
       const { error } = await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
@@ -617,6 +623,32 @@ export default function DossiersPage() {
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 )}
+
+                {/* Section facturation */}
+                <div className="pt-2 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Facturation (optionnel)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Honoraires (FCFA)</label>
+                      <input type="number" min="0" step="500" value={fHonoraires}
+                        onChange={e => setFHonoraires(Number(e.target.value))}
+                        placeholder="0"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Décaissements (FCFA)</label>
+                      <input type="number" min="0" step="500" value={fDecaissements}
+                        onChange={e => setFDecaissements(Number(e.target.value))}
+                        placeholder="0"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                  </div>
+                  {(fHonoraires > 0 || fDecaissements > 0) && (
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      Total : <span className="font-semibold text-gray-600">{(fHonoraires + fDecaissements).toLocaleString('fr-FR')} FCFA</span>
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-3 mt-5">
                 <motion.button onClick={sauvegarderDossier} disabled={saving || !clientId || (typeImpot !== 'acompte' && !dateEcheance)}
