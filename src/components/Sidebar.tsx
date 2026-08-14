@@ -9,8 +9,6 @@ import Link from 'next/link'
 import { useToast } from '@/components/Toast'
 
 const SIDEBAR_KEY = 'fiscai_sidebar_collapsed'
-
-// IDs déjà notifiés — persistés en mémoire module (survit aux re-renders)
 const notifiedIds = new Set<string>()
 
 export default function Sidebar() {
@@ -23,11 +21,24 @@ export default function Sidebar() {
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: string }[]>([])
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
 
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'true') setCollapsed(true)
+  }, [])
+
+  // Fermer le dropdown si clic en dehors
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
   function toggleCollapsed() {
@@ -56,8 +67,6 @@ export default function Sidebar() {
         }
       })
 
-      // N'afficher le toast que si c'est la 1ère fois qu'on voit cet ID
-      // ET que le chargement initial est terminé (pas de spam au montage)
       if (initialLoadDone.current) {
         notifs.forEach(n => {
           if (!notifiedIds.has(n.id)) {
@@ -66,7 +75,6 @@ export default function Sidebar() {
           }
         })
       } else {
-        // Premier chargement : marquer tous comme vus sans toaster
         notifs.forEach(n => notifiedIds.add(n.id))
         initialLoadDone.current = true
       }
@@ -75,11 +83,9 @@ export default function Sidebar() {
     }
 
     chargerNotifications()
-
     const channel = supabase.channel('sidebar-dossiers')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dossiers_fiscaux' }, () => chargerNotifications())
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [])
 
@@ -100,45 +106,98 @@ export default function Sidebar() {
     router.push('/auth')
   }
 
+  // Composant cloche avec dropdown
+  const Cloche = ({ isDrawer }: { isDrawer: boolean }) => (
+    <div ref={notifRef} className="relative">
+      <button
+        onClick={() => setShowNotifDropdown(prev => !prev)}
+        className="relative p-1.5 rounded-lg inline-flex flex-shrink-0 transition-colors hover:bg-white/10"
+        style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}
+        title="Notifications">
+        <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        {notifications.length > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
+            style={{ background: '#dc2626', fontSize: '9px' }}>
+            {notifications.length}
+          </span>
+        )}
+      </button>
+
+      {/* Dropdown notifications */}
+      <AnimatePresence>
+        {showNotifDropdown && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 rounded-xl shadow-2xl overflow-hidden"
+            style={{
+              left: isDrawer ? '0' : '100%',
+              top: isDrawer ? 'auto' : '-8px',
+              bottom: isDrawer ? '100%' : 'auto',
+              marginLeft: isDrawer ? '0' : '8px',
+              width: '280px',
+              background: '#1a2e22',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+            <div className="px-3 py-2.5 border-b border-white/10 flex items-center justify-between">
+              <p className="text-xs font-semibold text-white uppercase tracking-wide">Notifications</p>
+              <span className="text-xs text-white/40">{notifications.length} alerte(s)</span>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="px-3 py-4 text-center">
+                  <p className="text-xs text-white/40">Aucune alerte en cours</p>
+                </div>
+              ) : notifications.map(n => (
+                <Link
+                  key={n.id}
+                  href="/dashboard/dossiers"
+                  onClick={() => setShowNotifDropdown(false)}
+                  className="flex items-start gap-2.5 px-3 py-2.5 border-b border-white/5 hover:bg-white/5 transition-colors block">
+                  <span className="mt-0.5 flex-shrink-0 w-2 h-2 rounded-full"
+                    style={{ background: n.type === 'retard' ? '#dc2626' : '#e8a317' }} />
+                  <p className="text-xs text-white/80 leading-relaxed">{n.message}</p>
+                </Link>
+              ))}
+            </div>
+            {notifications.length > 0 && (
+              <div className="px-3 py-2 border-t border-white/10">
+                <Link
+                  href="/dashboard/dossiers"
+                  onClick={() => setShowNotifDropdown(false)}
+                  className="text-xs font-medium block text-center py-1 rounded-lg transition-colors"
+                  style={{ color: '#e8a317' }}>
+                  Voir tous les dossiers →
+                </Link>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+
   const liensCollaborateur = [
-    {
-      href: '/dashboard', label: 'Accueil',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-    },
-    {
-      href: '/dashboard/clients', label: 'Clients',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-    },
-    {
-      href: '/dashboard/dossiers', label: 'Dossiers',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-    },
-    {
-      href: '/dashboard/calendrier', label: 'Calendrier',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-    },
-    {
-      href: '/dashboard/assistant', label: 'Assistant IA',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" /></svg>
-    },
+    { href: '/dashboard', label: 'Accueil', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
+    { href: '/dashboard/clients', label: 'Clients', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> },
+    { href: '/dashboard/dossiers', label: 'Dossiers', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
+    { href: '/dashboard/calendrier', label: 'Calendrier', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> },
+    { href: '/dashboard/assistant', label: 'Assistant IA', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" /></svg> },
   ]
   const liensAdmin = [
-    {
-      href: '/admin/portefeuilles', label: 'Portefeuilles',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-    },
-    {
-      href: '/admin/statistiques', label: 'Statistiques',
-      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-    },
+    { href: '/admin/portefeuilles', label: 'Portefeuilles', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
+    { href: '/admin/statistiques', label: 'Statistiques', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
   ]
   const liens = isAdmin ? [...liensCollaborateur, ...liensAdmin] : liensCollaborateur
 
   const NavLink = ({ lien, isDrawer }: { lien: typeof liensCollaborateur[0]; isDrawer: boolean }) => {
     const actif = pathname === lien.href
     return (
-      <Link
-        href={lien.href}
+      <Link href={lien.href}
         title={collapsed && !isDrawer ? lien.label : undefined}
         className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all hover:translate-x-0.5 ${collapsed && !isDrawer ? 'justify-center px-0' : ''}`}
         style={actif
@@ -150,33 +209,14 @@ export default function Sidebar() {
     )
   }
 
-  const Cloche = ({ isDrawer }: { isDrawer: boolean }) => (
-    <Link href="/dashboard/dossiers"
-      className="relative p-1.5 rounded-lg inline-flex flex-shrink-0"
-      style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}
-      title="Notifications">
-      <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-      </svg>
-      {notifications.length > 0 && (
-        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
-          style={{ background: '#dc2626', fontSize: '9px' }}>
-          {notifications.length}
-        </span>
-      )}
-    </Link>
-  )
-
   const SidebarContent = ({ isDrawer = false }: { isDrawer?: boolean }) => (
     <div className="flex flex-col h-full">
 
-      {/* ── Logo + collapse ── */}
+      {/* Logo + collapse */}
       <div className="border-b border-white/10" style={{ padding: collapsed && !isDrawer ? '12px 0' : '12px' }}>
         {collapsed && !isDrawer ? (
-          /* Mode collapsed : logo centré, bouton collapse en dessous */
           <div className="flex flex-col items-center gap-2">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
               <span className="text-white text-base font-black">F</span>
             </div>
             <button onClick={toggleCollapsed}
@@ -188,10 +228,8 @@ export default function Sidebar() {
             </button>
           </div>
         ) : (
-          /* Mode expanded : logo + nom + bouton sur la même ligne */
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0" style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
               <span className="text-white text-base font-black">F</span>
             </div>
             <div className="min-w-0 flex-1">
@@ -200,30 +238,23 @@ export default function Sidebar() {
             </div>
             {isDrawer ? (
               <button className="text-white/50 hover:text-white p-1 flex-shrink-0" onClick={() => setOpen(false)}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             ) : (
               <button onClick={toggleCollapsed}
                 className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white flex-shrink-0 transition-colors"
                 title="Réduire">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                </svg>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
               </button>
             )}
           </div>
         )}
       </div>
 
-      {/* ── Nav ── */}
+      {/* Nav */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-        {!loading && liens.map(lien => (
-          <NavLink key={lien.href} lien={lien} isDrawer={isDrawer} />
-        ))}
+        {!loading && liens.map(lien => <NavLink key={lien.href} lien={lien} isDrawer={isDrawer} />)}
 
-        {/* Section Compte */}
         <div className="pt-4 mt-2 border-t border-white/10">
           {(!collapsed || isDrawer) ? (
             <div className="flex items-center justify-between px-2.5 mb-2">
@@ -242,9 +273,7 @@ export default function Sidebar() {
             style={pathname === '/parametres'
               ? { background: 'rgba(232,163,23,0.15)', color: '#e8a317', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid #e8a317' }
               : { color: 'rgba(255,255,255,0.65)', borderLeft: collapsed && !isDrawer ? 'none' : '3px solid transparent' }}>
-            <svg className="w-5 h-5 flex-shrink-0"
-              style={{ color: pathname === '/parametres' ? '#e8a317' : 'rgba(255,255,255,0.5)' }}
-              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 flex-shrink-0" style={{ color: pathname === '/parametres' ? '#e8a317' : 'rgba(255,255,255,0.5)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -253,15 +282,13 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* ── Profil + Déco ── */}
+      {/* Profil + Déco */}
       <div className="px-2 py-3 border-t border-white/10">
         {user && (
           <div className={`flex items-center gap-3 px-2 py-2.5 rounded-xl mb-1 ${collapsed && !isDrawer ? 'justify-center' : ''}`}
             style={{ background: 'rgba(255,255,255,0.05)' }}>
             {user.avatar_url ? (
-              <img src={user.avatar_url} alt="Avatar"
-                className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-                title={collapsed && !isDrawer ? `${user.prenom} ${user.nom}` : undefined} />
+              <img src={user.avatar_url} alt="Avatar" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" title={collapsed && !isDrawer ? `${user.prenom} ${user.nom}` : undefined} />
             ) : (
               <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                 style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}
@@ -277,7 +304,6 @@ export default function Sidebar() {
             )}
           </div>
         )}
-
         <button onClick={deconnexion}
           title={collapsed && !isDrawer ? 'Déconnexion' : undefined}
           className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm font-medium hover:bg-white/5 transition-colors ${collapsed && !isDrawer ? 'justify-center' : ''}`}
@@ -293,30 +319,18 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* ── Topbar mobile ── */}
+      {/* Topbar mobile */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 border-b border-white/10"
         style={{ background: 'linear-gradient(135deg, #0f2318, #1a3c2e)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
             <span className="text-white text-sm font-black">F</span>
           </div>
           <span className="text-white font-bold text-sm">FiscAl</span>
         </div>
         <div className="flex items-center gap-2">
-          {notifications.length > 0 && (
-            <Link href="/dashboard/dossiers" className="relative p-1.5">
-              <svg className="w-5 h-5" fill="none" stroke="#e8a317" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
-                style={{ background: '#dc2626', fontSize: '9px' }}>
-                {notifications.length}
-              </span>
-            </Link>
-          )}
-          <button onClick={() => setOpen(true)} className="p-2 rounded-xl"
-            style={{ background: 'rgba(255,255,255,0.1)' }}>
+          <Cloche isDrawer={true} />
+          <button onClick={() => setOpen(true)} className="p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.1)' }}>
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -324,7 +338,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* ── Sidebar desktop ── */}
+      {/* Sidebar desktop */}
       <motion.aside
         animate={{ width: collapsed ? 64 : 224 }}
         transition={{ type: 'tween', duration: 0.2 }}
@@ -333,16 +347,13 @@ export default function Sidebar() {
         <SidebarContent />
       </motion.aside>
 
-      {/* ── Drawer mobile ── */}
+      {/* Drawer mobile */}
       <AnimatePresence>
         {open && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/60 lg:hidden"
-              onClick={() => setOpen(false)} />
-            <motion.aside
-              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setOpen(false)} />
+            <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.22 }}
               className="fixed top-0 left-0 h-full w-72 z-50 lg:hidden flex flex-col"
               style={{ background: 'linear-gradient(180deg, #0f2318 0%, #1a3c2e 100%)' }}>
