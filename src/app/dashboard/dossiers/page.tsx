@@ -25,9 +25,7 @@ const STATUT_COULEURS: Record<string, string> = {
 type Dossier = {
   id: string; client_id: string; type_impot: string; periode_mois: number | null
   periode_annee: number; statut: string; date_echeance: string; date_depot: string | null
-  collaborateur_id: string; honoraires: number; decaissements: number; montant_recu: number
-  statut_paiement: string; date_facturation: string | null; date_paiement: string | null
-  notes_facturation: string | null
+  collaborateur_id: string; montant: number | null
   clients: { raison_sociale: string; email_contact: string; telephone?: string }
   collaborateurs: { nom: string; prenom: string } | null
 }
@@ -62,8 +60,7 @@ export default function DossiersPage() {
   const [periodeAnnee, setPeriodeAnnee] = useState(new Date().getFullYear())
   const [dateEcheance, setDateEcheance] = useState('')
   const [numeroAcompte, setNumeroAcompte] = useState(1)
-  const [fHonoraires, setFHonoraires] = useState(0)
-  const [fDecaissements, setFDecaissements] = useState(0)
+  const [montant, setMontant] = useState(0)
   const [saving, setSaving] = useState(false)
 
   // Relance
@@ -103,7 +100,7 @@ export default function DossiersPage() {
   function resetForm() {
     setClientId(''); setTypeImpot('TVA'); setPeriodeMois(1)
     setPeriodeAnnee(new Date().getFullYear()); setDateEcheance('')
-    setNumeroAcompte(1); setFHonoraires(0); setFDecaissements(0)
+    setNumeroAcompte(1); setMontant(0)
     setDossierEnEdition(null); setShowForm(false)
   }
 
@@ -111,7 +108,7 @@ export default function DossiersPage() {
     setDossierEnEdition(d); setClientId(d.client_id); setTypeImpot(d.type_impot)
     setPeriodeMois(d.periode_mois || 1); setPeriodeAnnee(d.periode_annee)
     setDateEcheance(d.date_echeance || ''); setNumeroAcompte(d.periode_mois || 1)
-    setFHonoraires(d.honoraires || 0); setFDecaissements(d.decaissements || 0)
+    setMontant(d.montant || 0)
     setShowForm(true); setDossierActif(null)
   }
 
@@ -124,7 +121,7 @@ export default function DossiersPage() {
       periode_mois: typeImpot === 'TVA' ? periodeMois : typeImpot === 'acompte' ? numeroAcompte : null,
       periode_annee: periodeAnnee,
       date_echeance: typeImpot === 'acompte' ? getAcompteEcheance(numeroAcompte, periodeAnnee) : dateEcheance,
-      honoraires: fHonoraires || 0, decaissements: fDecaissements || 0,
+      montant: montant || null,
     }
     if (dossierEnEdition) {
       const { error } = await supabase.from('dossiers_fiscaux').update(payload).eq('id', dossierEnEdition.id)
@@ -163,10 +160,8 @@ export default function DossiersPage() {
   async function genererRelance() {
     if (!dossierActif) return
     setGeneratingRelance(true)
-    const totalFacture = (dossierActif.honoraires || 0) + (dossierActif.decaissements || 0)
-    const solde = totalFacture - (dossierActif.montant_recu || 0)
-    const contexteFacturation = totalFacture > 0
-      ? ` Facturation : honoraires ${(dossierActif.honoraires || 0).toLocaleString('fr-FR')} FCFA, décaissements ${(dossierActif.decaissements || 0).toLocaleString('fr-FR')} FCFA, solde dû ${solde.toLocaleString('fr-FR')} FCFA.`
+    const contexteFacturation = dossierActif.montant
+      ? ` Le montant de l'impôt pour ce dossier est de ${Number(dossierActif.montant).toLocaleString('fr-FR')} FCFA.`
       : ''
     const isWA = canalRelance === 'whatsapp'
     try {
@@ -291,8 +286,7 @@ export default function DossiersPage() {
               periodeAnnee={periodeAnnee} setPeriodeAnnee={setPeriodeAnnee}
               dateEcheance={dateEcheance} setDateEcheance={setDateEcheance}
               numeroAcompte={numeroAcompte} setNumeroAcompte={setNumeroAcompte}
-              fHonoraires={fHonoraires} setFHonoraires={setFHonoraires}
-              fDecaissements={fDecaissements} setFDecaissements={setFDecaissements}
+              montant={montant} setMontant={setMontant}
               saving={saving} onSave={sauvegarder} onClose={resetForm}
             />
           )}
@@ -343,7 +337,7 @@ export default function DossiersPage() {
                 <table className="w-full">
                   <thead>
                     <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-                      {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Changer statut', 'Actions'].map(h => (
+                      {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Montant', 'Changer statut', 'Actions'].map(h => (
                         <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-white uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -375,6 +369,9 @@ export default function DossiersPage() {
                             <span className={`text-xs px-2 py-1 rounded-full font-semibold ${STATUT_COULEURS[d.statut]}`}>
                               {STATUT_LABELS[d.statut as keyof typeof STATUT_LABELS]}
                             </span>
+                          </td>
+                          <td className="px-3 py-3 text-sm font-medium whitespace-nowrap" style={{ color: '#1a3c2e' }}>
+                            {d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} FCFA` : '—'}
                           </td>
                           <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                             <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}

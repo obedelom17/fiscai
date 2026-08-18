@@ -83,22 +83,14 @@ CREATE TABLE dossiers_fiscaux (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id        UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   collaborateur_id UUID REFERENCES collaborateurs(id) ON DELETE SET NULL,
-  type_impot       TEXT NOT NULL,
+  type_impot       TEXT NOT NULL CHECK (type_impot IN ('TVA','IRPP','IS','acompte','Patente','Retenue Sur Loyer','Droit d\'Enregistrement','Taxe d\'Habitation','Taxe Fonciere Baties','Taxe Fonciere Non Baties')),
   periode_mois     INTEGER CHECK (periode_mois BETWEEN 1 AND 12),
   periode_annee    INTEGER NOT NULL,
   date_echeance    DATE,
   date_depot       TIMESTAMPTZ,                         -- date de réception du document
   statut           TEXT NOT NULL DEFAULT 'en_attente'
                    CHECK (statut IN ('en_attente', 'recu', 'valide', 'televerse_otr')),
-  -- Facturation
-  honoraires       NUMERIC(12,2) DEFAULT 0,             -- honoraires du cabinet
-  decaissements    NUMERIC(12,2) DEFAULT 0,             -- frais avancés pour le client
-  montant_recu     NUMERIC(12,2) DEFAULT 0,             -- montant effectivement reçu
-  statut_paiement  TEXT NOT NULL DEFAULT 'non_facture'
-                   CHECK (statut_paiement IN ('non_facture','facture','partiellement_paye','paye')),
-  date_facturation DATE,                                -- date à laquelle la facture a été émise
-  date_paiement    DATE,                                -- date à laquelle le paiement a été reçu
-  notes_facturation TEXT,                               -- observations libres sur le paiement
+  montant          NUMERIC(12,2) DEFAULT NULL,          -- montant de l'impôt pour ce dossier
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase'
 import { useToast } from '@/components/Toast'
 import DossierCommentaires from '@/components/DossierCommentaires'
 import HistoriqueStatuts from '@/components/HistoriqueStatuts'
-import DossierFacturation from '@/components/DossierFacturation'
 import AuditTab from '@/components/AuditTab'
 import { STATUT_LABELS, formatPeriode } from '@/lib/types'
 import emailjs from '@emailjs/browser'
@@ -36,7 +35,7 @@ type Props = {
 export default function DossierPanel({ dossier, auditLogs, relancesOnglet, modeles, canalRelance, setCanalRelance, messageRelance, setMessageRelance, sendingRelance, onClose, onUpdate, onSendRelance, onGenererRelance, generatingRelance, onStatutChange }: Props) {
   const supabase = createClient()
   const { toast } = useToast()
-  const [onglet, setOnglet] = useState<'relance' | 'commentaires' | 'historique' | 'facturation'>('relance')
+  const [onglet, setOnglet] = useState<'relance' | 'commentaires' | 'historique'>('relance')
   const [documents, setDocuments] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -81,7 +80,6 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
     { key: 'relance', label: 'Relance & Documents' },
     { key: 'commentaires', label: 'Commentaires' },
     { key: 'historique', label: 'Historique statuts' },
-    { key: 'facturation', label: 'Facturation' },
   ] as const
 
   return (
@@ -185,7 +183,7 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
 
         {onglet === 'commentaires' && <DossierCommentaires dossierId={dossier.id} />}
         {onglet === 'historique' && <HistoriqueStatuts dossierId={dossier.id} />}
-        {onglet === 'facturation' && <DossierFacturation dossier={dossier} onUpdate={onUpdate} />}
+
       </div>
     </motion.div>
   )

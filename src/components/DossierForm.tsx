@@ -5,6 +5,19 @@ import { ACOMPTES, getAcompteEcheance } from '@/lib/types'
 
 const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
 
+const TYPES_IMPOT = [
+  { value: 'TVA',                        label: 'TVA' },
+  { value: 'IRPP',                       label: 'IRPP' },
+  { value: 'IS',                         label: 'Impôt sur les Sociétés (IS)' },
+  { value: 'acompte',                    label: 'Acompte OTR' },
+  { value: 'Patente',                    label: 'Patente' },
+  { value: 'Retenue Sur Loyer',          label: 'Retenue Sur Loyer' },
+  { value: 'Droit d\'Enregistrement',   label: 'Droit d\'Enregistrement' },
+  { value: 'Taxe d\'Habitation',        label: 'Taxe d\'Habitation' },
+  { value: 'Taxe Fonciere Baties',      label: 'Taxe Foncière sur Propriétés Bâties' },
+  { value: 'Taxe Fonciere Non Baties',  label: 'Taxe Foncière sur Propriétés Non Bâties' },
+]
+
 type Client = { id: string; raison_sociale: string }
 
 type Props = {
@@ -16,14 +29,13 @@ type Props = {
   periodeAnnee: number; setPeriodeAnnee: (v: number) => void
   dateEcheance: string; setDateEcheance: (v: string) => void
   numeroAcompte: number; setNumeroAcompte: (v: number) => void
-  fHonoraires: number; setFHonoraires: (v: number) => void
-  fDecaissements: number; setFDecaissements: (v: number) => void
+  montant: number; setMontant: (v: number) => void
   saving: boolean
   onSave: () => void
   onClose: () => void
 }
 
-export default function DossierForm({ clients, dossierEnEdition, clientId, setClientId, typeImpot, setTypeImpot, periodeMois, setPeriodeMois, periodeAnnee, setPeriodeAnnee, dateEcheance, setDateEcheance, numeroAcompte, setNumeroAcompte, fHonoraires, setFHonoraires, fDecaissements, setFDecaissements, saving, onSave, onClose }: Props) {
+export default function DossierForm({ clients, dossierEnEdition, clientId, setClientId, typeImpot, setTypeImpot, periodeMois, setPeriodeMois, periodeAnnee, setPeriodeAnnee, dateEcheance, setDateEcheance, numeroAcompte, setNumeroAcompte, montant, setMontant, saving, onSave, onClose }: Props) {
   return (
     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
       className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 md:p-6 mb-6">
@@ -50,10 +62,7 @@ export default function DossierForm({ clients, dossierEnEdition, clientId, setCl
           <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Type d'impôt</label>
           <select value={typeImpot} onChange={e => setTypeImpot(e.target.value)}
             className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-            <option value="TVA">TVA</option>
-            <option value="IRPP">IRPP</option>
-            <option value="IS">Impôt sur les Sociétés</option>
-            <option value="acompte">Acompte</option>
+            {TYPES_IMPOT.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
 
@@ -99,26 +108,17 @@ export default function DossierForm({ clients, dossierEnEdition, clientId, setCl
           </div>
         )}
 
-        {/* Facturation */}
-        <div className="pt-2 border-t border-gray-100 md:col-span-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Facturation (optionnel)</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Honoraires (FCFA)</label>
-              <input type="number" min="0" step="500" value={fHonoraires} placeholder="0"
-                onChange={e => setFHonoraires(Number(e.target.value))}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Décaissements (FCFA)</label>
-              <input type="number" min="0" step="500" value={fDecaissements} placeholder="0"
-                onChange={e => setFDecaissements(Number(e.target.value))}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            </div>
-          </div>
-          {(fHonoraires > 0 || fDecaissements > 0) && (
-            <p className="text-xs text-gray-400 mt-1.5">
-              Total : <span className="font-semibold text-gray-600">{(fHonoraires + fDecaissements).toLocaleString('fr-FR')} FCFA</span>
+        {/* Montant */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+            Montant de l'impôt (FCFA)
+          </label>
+          <input type="number" min="0" step="500" value={montant || ''} placeholder="0"
+            onChange={e => setMontant(Number(e.target.value))}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          {montant > 0 && (
+            <p className="text-xs text-gray-400 mt-1">
+              {montant.toLocaleString('fr-FR')} FCFA
             </p>
           )}
         </div>
