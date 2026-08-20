@@ -136,8 +136,8 @@ export default function Sidebar() {
             className="absolute z-[999] rounded-2xl shadow-2xl overflow-hidden"
             style={{
               width: '300px',
-              left: '32px',
-              top: '0px',
+              left: 'calc(100% + 8px)',
+              top: '-8px',
               background: '#132218',
               border: '1px solid rgba(255,255,255,0.12)',
             }}>
