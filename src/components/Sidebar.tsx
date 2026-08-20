@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRole } from '@/lib/useRole'
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useToast } from '@/components/Toast'
 
@@ -125,19 +126,21 @@ export default function Sidebar() {
         )}
       </button>
 
-      {/* Dropdown notifications */}
+      {/* Dropdown notifications via portal */}
       <AnimatePresence>
-        {showNotifDropdown && (
+        {showNotifDropdown && typeof window !== 'undefined' && createPortal(
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-[999] rounded-2xl shadow-2xl overflow-hidden"
+            className="rounded-2xl shadow-2xl overflow-hidden"
             style={{
+              position: 'fixed',
               width: '300px',
-              left: 'calc(100% + 8px)',
-              top: '-8px',
+              left: '240px',
+              top: '60px',
+              zIndex: 9999,
               background: '#132218',
               border: '1px solid rgba(255,255,255,0.12)',
             }}>
@@ -191,7 +194,8 @@ export default function Sidebar() {
                 </svg>
               </Link>
             </div>
-          </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
     </div>
