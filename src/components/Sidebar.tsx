@@ -135,9 +135,9 @@ export default function Sidebar() {
             transition={{ duration: 0.15 }}
             className="fixed z-[999] rounded-2xl shadow-2xl overflow-hidden"
             style={{
-              width: '320px',
-              left: isDrawer ? '16px' : '72px',
-              top: '60px',
+              width: '300px',
+              left: '232px',
+              top: '52px',
               background: '#132218',
               border: '1px solid rgba(255,255,255,0.12)',
             }}>
