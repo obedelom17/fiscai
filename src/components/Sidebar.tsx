@@ -133,11 +133,11 @@ export default function Sidebar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="fixed z-[999] rounded-2xl shadow-2xl overflow-hidden"
+            className="absolute z-[999] rounded-2xl shadow-2xl overflow-hidden"
             style={{
               width: '300px',
-              left: '232px',
-              top: '52px',
+              left: '32px',
+              top: '0px',
               background: '#132218',
               border: '1px solid rgba(255,255,255,0.12)',
             }}>
