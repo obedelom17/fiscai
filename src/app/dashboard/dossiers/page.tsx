@@ -334,10 +334,11 @@ export default function DossiersPage() {
 
               {/* Table desktop */}
               <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px]">
                   <thead>
                     <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-                      {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Montant', 'Changer statut', 'Actions'].map(h => (
+                      {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Montant (FCFA)', 'Changer statut', 'Actions'].map(h => (
                         <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-white uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -394,6 +395,7 @@ export default function DossiersPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
                 {dossiersFiltres.length === 0 && (
                   <div className="text-center py-12 text-gray-400 text-sm">Aucun dossier</div>
                 )}
