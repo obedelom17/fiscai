@@ -310,7 +310,7 @@ export default function DossiersPage() {
 
         {/* Onglet Dossiers */}
         {onglet === 'dossiers' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className={`grid grid-cols-1 gap-5 ${dossierActif ? 'lg:grid-cols-2' : ''}`}>
             {/* Liste */}
             <div>
               {/* Filtres */}

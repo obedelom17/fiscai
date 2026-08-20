@@ -129,52 +129,68 @@ export default function Sidebar() {
       <AnimatePresence>
         {showNotifDropdown && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 rounded-xl shadow-2xl overflow-hidden"
+            className="fixed z-[999] rounded-2xl shadow-2xl overflow-hidden"
             style={{
-              left: isDrawer ? '0' : '100%',
-              top: isDrawer ? 'auto' : '-8px',
-              bottom: isDrawer ? '100%' : 'auto',
-              marginLeft: isDrawer ? '0' : '8px',
-              width: '280px',
-              background: '#1a2e22',
-              border: '1px solid rgba(255,255,255,0.1)',
+              width: '320px',
+              left: isDrawer ? '16px' : '72px',
+              top: '60px',
+              background: '#132218',
+              border: '1px solid rgba(255,255,255,0.12)',
             }}>
-            <div className="px-3 py-2.5 border-b border-white/10 flex items-center justify-between">
-              <p className="text-xs font-semibold text-white uppercase tracking-wide">Notifications</p>
-              <span className="text-xs text-white/40">{notifications.length} alerte(s)</span>
+            {/* En-tête */}
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="#e8a317" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <p className="text-sm font-semibold text-white">Notifications</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#dc2626', color: 'white' }}>
+                  {notifications.length}
+                </span>
+                <button onClick={() => setShowNotifDropdown(false)} className="text-white/40 hover:text-white text-lg leading-none">×</button>
+              </div>
             </div>
-            <div className="max-h-64 overflow-y-auto">
+
+            {/* Liste */}
+            <div className="overflow-y-auto" style={{ maxHeight: '320px' }}>
               {notifications.length === 0 ? (
-                <div className="px-3 py-4 text-center">
-                  <p className="text-xs text-white/40">Aucune alerte en cours</p>
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm text-white/40">Aucune alerte en cours</p>
                 </div>
-              ) : notifications.map(n => (
-                <Link
-                  key={n.id}
-                  href="/dashboard/dossiers"
+              ) : notifications.map((n, i) => (
+                <Link key={n.id} href="/dashboard/dossiers"
                   onClick={() => setShowNotifDropdown(false)}
-                  className="flex items-start gap-2.5 px-3 py-2.5 border-b border-white/5 hover:bg-white/5 transition-colors block">
-                  <span className="mt-0.5 flex-shrink-0 w-2 h-2 rounded-full"
+                  className="flex items-start gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors block">
+                  <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full"
                     style={{ background: n.type === 'retard' ? '#dc2626' : '#e8a317' }} />
-                  <p className="text-xs text-white/80 leading-relaxed">{n.message}</p>
+                  <div>
+                    <p className="text-xs text-white/90 leading-relaxed font-medium">{n.message}</p>
+                    <p className="text-xs mt-0.5" style={{ color: n.type === 'retard' ? '#fca5a5' : '#fcd34d' }}>
+                      {n.type === 'retard' ? 'En retard' : 'Échéance proche'}
+                    </p>
+                  </div>
                 </Link>
               ))}
             </div>
-            {notifications.length > 0 && (
-              <div className="px-3 py-2 border-t border-white/10">
-                <Link
-                  href="/dashboard/dossiers"
-                  onClick={() => setShowNotifDropdown(false)}
-                  className="text-xs font-medium block text-center py-1 rounded-lg transition-colors"
-                  style={{ color: '#e8a317' }}>
-                  Voir tous les dossiers →
-                </Link>
-              </div>
-            )}
+
+            {/* Pied */}
+            <div className="px-4 py-3 border-t border-white/10">
+              <Link href="/dashboard/dossiers"
+                onClick={() => setShowNotifDropdown(false)}
+                className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl transition-colors w-full"
+                style={{ background: 'rgba(232,163,23,0.15)', color: '#e8a317' }}>
+                Voir tous les dossiers
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
