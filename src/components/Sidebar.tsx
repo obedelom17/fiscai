@@ -136,8 +136,8 @@ export default function Sidebar() {
             style={{
               position: 'fixed',
               width: '300px',
-              left: '240px',
-              top: '60px',
+              left: '16px',
+              bottom: '120px',
               zIndex: 9999,
               borderRadius: '16px',
               boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
@@ -185,15 +185,15 @@ export default function Sidebar() {
 
             {/* Pied */}
             <div className="px-4 py-3 border-t border-white/10">
-              <Link href="/dashboard/dossiers"
-                onClick={() => setShowNotifDropdown(false)}
+              <button
+                onClick={() => { setShowNotifDropdown(false); router.push('/dashboard/dossiers') }}
                 className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl transition-colors w-full"
                 style={{ background: 'rgba(232,163,23,0.15)', color: '#e8a317' }}>
                 Voir tous les dossiers
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </Link>
+              </button>
             </div>
           </motion.div>
         )}
