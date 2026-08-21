@@ -136,8 +136,9 @@ export default function Sidebar() {
             style={{
               position: 'fixed',
               width: '300px',
-              left: '16px',
-              bottom: '120px',
+              left: '280px',
+              top: '50%',
+              transform: 'translateY(-50%)',
               zIndex: 9999,
               borderRadius: '16px',
               boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
