@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRole } from '@/lib/useRole'
 import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useToast } from '@/components/Toast'
 
@@ -126,21 +125,23 @@ export default function Sidebar() {
         )}
       </button>
 
-      {/* Dropdown notifications via portal */}
+      {/* Dropdown notifications */}
       <AnimatePresence>
-        {showNotifDropdown && typeof window !== 'undefined' && createPortal(
+        {showNotifDropdown && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="rounded-2xl shadow-2xl overflow-hidden"
             style={{
               position: 'fixed',
               width: '300px',
               left: '240px',
               top: '60px',
               zIndex: 9999,
+              borderRadius: '16px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+              overflow: 'hidden',
               background: '#132218',
               border: '1px solid rgba(255,255,255,0.12)',
             }}>
@@ -194,8 +195,7 @@ export default function Sidebar() {
                 </svg>
               </Link>
             </div>
-          </motion.div>,
-          document.body
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -362,7 +362,7 @@ export default function Sidebar() {
       <motion.aside
         animate={{ width: collapsed ? 64 : 224 }}
         transition={{ type: 'tween', duration: 0.2 }}
-        className="hidden lg:flex h-screen flex-col sticky top-0 flex-shrink-0 overflow-hidden"
+        className="hidden lg:flex h-screen flex-col sticky top-0 flex-shrink-0"
         style={{ background: 'linear-gradient(180deg, #0f2318 0%, #1a3c2e 100%)' }}>
         <SidebarContent />
       </motion.aside>
