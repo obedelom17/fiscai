@@ -135,16 +135,18 @@ export default function Sidebar() {
             transition={{ duration: 0.15 }}
             style={{
               position: 'fixed',
-              width: '300px',
-              left: '280px',
-              top: '50%',
-              transform: 'translateY(-50%)',
+              width: '310px',
+              left: '230px',
+              top: '80px',
               zIndex: 9999,
               borderRadius: '16px',
               boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
               overflow: 'hidden',
               background: '#132218',
               border: '1px solid rgba(255,255,255,0.12)',
+              maxHeight: 'calc(100vh - 100px)',
+              display: 'flex',
+              flexDirection: 'column',
             }}>
             {/* En-tête */}
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
@@ -163,7 +165,7 @@ export default function Sidebar() {
             </div>
 
             {/* Liste */}
-            <div className="overflow-y-auto" style={{ maxHeight: '320px' }}>
+            <div className="overflow-y-auto flex-1">
               {notifications.length === 0 ? (
                 <div className="px-4 py-8 text-center">
                   <p className="text-sm text-white/40">Aucune alerte en cours</p>
