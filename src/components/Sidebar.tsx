@@ -21,24 +21,11 @@ export default function Sidebar() {
   const [notifications, setNotifications] = useState<{ id: string; message: string; type: string }[]>([])
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
-  const [showNotifDropdown, setShowNotifDropdown] = useState(false)
-  const notifRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
 
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_KEY)
     if (saved === 'true') setCollapsed(true)
-  }, [])
-
-  // Fermer le dropdown si clic en dehors
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setShowNotifDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
   function toggleCollapsed() {
@@ -106,102 +93,23 @@ export default function Sidebar() {
     router.push('/auth')
   }
 
-  // Composant cloche avec dropdown
+  // Composant cloche - simple lien vers dossiers
   const Cloche = ({ isDrawer }: { isDrawer: boolean }) => (
-    <div ref={notifRef} className="relative">
-      <button
-        onClick={() => setShowNotifDropdown(prev => !prev)}
-        className="relative p-1.5 rounded-lg inline-flex flex-shrink-0 transition-colors hover:bg-white/10"
-        style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}
-        title="Notifications">
-        <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-        {notifications.length > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
-            style={{ background: '#dc2626', fontSize: '9px' }}>
-            {notifications.length}
-          </span>
-        )}
-      </button>
-
-      {/* Dropdown notifications */}
-      <AnimatePresence>
-        {showNotifDropdown && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            style={{
-              position: 'fixed',
-              width: '310px',
-              left: '230px',
-              top: '80px',
-              zIndex: 9999,
-              borderRadius: '16px',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-              overflow: 'hidden',
-              background: '#132218',
-              border: '1px solid rgba(255,255,255,0.12)',
-              maxHeight: 'calc(100vh - 100px)',
-              display: 'flex',
-              flexDirection: 'column',
-            }}>
-            {/* En-tête */}
-            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="#e8a317" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                <p className="text-sm font-semibold text-white">Notifications</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#dc2626', color: 'white' }}>
-                  {notifications.length}
-                </span>
-                <button onClick={() => setShowNotifDropdown(false)} className="text-white/40 hover:text-white text-lg leading-none">×</button>
-              </div>
-            </div>
-
-            {/* Liste */}
-            <div className="overflow-y-auto flex-1">
-              {notifications.length === 0 ? (
-                <div className="px-4 py-8 text-center">
-                  <p className="text-sm text-white/40">Aucune alerte en cours</p>
-                </div>
-              ) : notifications.map((n, i) => (
-                <Link key={n.id} href="/dashboard/dossiers"
-                  onClick={() => setShowNotifDropdown(false)}
-                  className="flex items-start gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors block">
-                  <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full"
-                    style={{ background: n.type === 'retard' ? '#dc2626' : '#e8a317' }} />
-                  <div>
-                    <p className="text-xs text-white/90 leading-relaxed font-medium">{n.message}</p>
-                    <p className="text-xs mt-0.5" style={{ color: n.type === 'retard' ? '#fca5a5' : '#fcd34d' }}>
-                      {n.type === 'retard' ? 'En retard' : 'Échéance proche'}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Pied */}
-            <div className="px-4 py-3 border-t border-white/10">
-              <button
-                onClick={() => { setShowNotifDropdown(false); router.push('/dashboard/dossiers') }}
-                className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl transition-colors w-full"
-                style={{ background: 'rgba(232,163,23,0.15)', color: '#e8a317' }}>
-                Voir tous les dossiers
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <button
+      onClick={() => router.push('/dashboard/dossiers')}
+      className="relative p-1.5 rounded-lg inline-flex flex-shrink-0 transition-colors hover:bg-white/10"
+      style={{ background: notifications.length > 0 ? 'rgba(232,163,23,0.15)' : 'transparent' }}
+      title={notifications.length > 0 ? `${notifications.length} alerte(s) — cliquer pour voir` : 'Notifications'}>
+      <svg className="w-4 h-4" fill="none" stroke={notifications.length > 0 ? '#e8a317' : 'rgba(255,255,255,0.4)'} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      </svg>
+      {notifications.length > 0 && (
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center font-bold"
+          style={{ background: '#dc2626', fontSize: '9px' }}>
+          {notifications.length}
+        </span>
+      )}
+    </button>
   )
 
   const liensCollaborateur = [
