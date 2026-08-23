@@ -173,7 +173,7 @@ export default function DossiersPage() {
         })
       })
       const data = await res.json()
-      setMessageRelance(data.message || data.response || '')
+      setMessageRelance(data.reponse || '')
     } catch { toast('Erreur génération IA', 'error') }
     setGeneratingRelance(false)
   }
