@@ -125,8 +125,8 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
         data.waLinks.forEach((url: string) => window.open(url, '_blank'))
       }
       setMessages(prev => [...prev, { role: 'assistant', content: data.reponse }])
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Désolé, une erreur est survenue. Veuillez réessayer.' }])
+    } catch (err: any) {
+      setMessages(prev => [...prev, { role: 'assistant', content: `Erreur : ${err?.message || 'Veuillez réessayer.'}` }])
     } finally {
       setLoading(false)
     }

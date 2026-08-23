@@ -160,9 +160,13 @@ export async function POST(request: NextRequest) {
       cookies: {
         getAll() { return cookieStore.getAll() },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Ignoré en lecture seule
+          }
         },
       },
     }
@@ -250,8 +254,9 @@ Réponds en français, de manière concise et professionnelle.`,
       waLinks: waLinks.length > 0 ? waLinks : undefined,
     })
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('Groq error:', err)
-    return NextResponse.json({ error: 'Erreur assistant IA' }, { status: 500 })
+    const msg = err?.message || 'Erreur inconnue'
+    return NextResponse.json({ error: `Erreur assistant IA : ${msg}` }, { status: 500 })
   }
 }
