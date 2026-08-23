@@ -203,7 +203,7 @@ Réponds en français, de manière concise et professionnelle.`,
 
     // Premier appel avec tools
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-20b',
       messages: messagesGroq,
       tools,
       tool_choice: 'auto',
@@ -239,7 +239,7 @@ Réponds en français, de manière concise et professionnelle.`,
 
     // Deuxième appel pour synthèse
     const finalCompletion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-20b',
       messages: [
         ...messagesGroq,
         { role: 'assistant', content: choice.message.content || '', tool_calls: toolCalls },
