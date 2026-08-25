@@ -6,6 +6,8 @@ import PageHeader from '@/components/PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
@@ -33,7 +35,6 @@ export default function AssistantPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Sauvegarder à chaque changement de messages (hors message initial seul)
   useEffect(() => {
     if (messages.length > 1) sauvegarder(messages)
   }, [messages])
@@ -124,7 +125,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
       if (data.waLinks?.length > 0) {
         data.waLinks.forEach((url: string) => window.open(url, '_blank'))
       }
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reponse }])
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reponse || data.message || data.response || 'Pas de réponse.' }])
     } catch (err: any) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Erreur : ${err?.message || 'Veuillez réessayer.'}` }])
     } finally {
@@ -135,7 +136,6 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
   async function reinitialiser() {
     const msgs = [MSG_INITIAL]
     setMessages(msgs)
-    // Supprimer la conversation en base
     if (convId) {
       await supabase.from('conversations_assistant').delete().eq('id', convId)
       setConvId(null)
@@ -168,7 +168,6 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
 
       <div className="flex-1 flex flex-col overflow-hidden px-4 md:px-8 py-4 md:py-6 gap-4">
 
-        {/* Indicateur */}
         {messages.length > 2 && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs flex-shrink-0"
             style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
@@ -178,7 +177,6 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           </div>
         )}
 
-        {/* Suggestions */}
         <AnimatePresence>
           {messages.length === 1 && (
             <motion.div
@@ -208,7 +206,6 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           )}
         </AnimatePresence>
 
-        {/* Zone messages */}
         <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-y-auto space-y-4 min-h-0">
           <AnimatePresence initial={false}>
             {messages.map((msg, i) => (
@@ -228,7 +225,48 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
                   style={msg.role === 'user'
                     ? { background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)', color: 'white' }
                     : { background: '#f8fafb', color: '#374151' }}>
-                  {msg.content}
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        table: ({ children }) => (
+                          <div className="overflow-x-auto my-2">
+                            <table className="min-w-full text-xs border-collapse border border-gray-200">{children}</table>
+                          </div>
+                        ),
+                        thead: ({ children }) => (
+                          <thead style={{ background: '#2d6a4f', color: 'white' }}>{children}</thead>
+                        ),
+                        th: ({ children }) => (
+                          <th className="border border-gray-200 px-3 py-2 text-left font-medium">{children}</th>
+                        ),
+                        td: ({ children }) => (
+                          <td className="border border-gray-200 px-3 py-2">{children}</td>
+                        ),
+                        tr: ({ children }) => (
+                          <tr className="even:bg-gray-50">{children}</tr>
+                        ),
+                        strong: ({ children }) => (
+                          <strong className="font-semibold" style={{ color: '#1a3c2e' }}>{children}</strong>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="list-disc list-inside space-y-1 my-1">{children}</ul>
+                        ),
+                        ol: ({ children }) => (
+                          <ol className="list-decimal list-inside space-y-1 my-1">{children}</ol>
+                        ),
+                        li: ({ children }) => <li className="text-sm">{children}</li>,
+                        p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                        code: ({ children }) => (
+                          <code className="bg-gray-100 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  )}
                 </div>
                 {msg.role === 'user' && (
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1"
@@ -264,7 +302,6 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 flex items-center gap-3 flex-shrink-0">
           <input value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && envoyer()}

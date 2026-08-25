@@ -50,6 +50,8 @@ cd fiscai
 
 # Installer les dépendances
 npm install
+npm install react-markdown remark-gfm
+
 
 # Configurer les variables d'environnement
 cp .env.local
