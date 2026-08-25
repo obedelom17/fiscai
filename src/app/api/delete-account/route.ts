@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
-// Admin client avec service role (serveur uniquement)
+// Admin client avec service role 
 function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!

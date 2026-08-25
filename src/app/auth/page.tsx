@@ -297,7 +297,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex overflow-hidden" style={{ background: '#0f2318' }}>
 
-      {/* Panneau gauche — fond image */}
+      {/* Panneau gauche */}
       <div className="hidden lg:flex flex-col justify-between w-[55%] relative p-14">
         <div className="absolute inset-0">
           <img

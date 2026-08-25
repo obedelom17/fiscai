@@ -1,13 +1,7 @@
--- ============================================================
--- FiscAI — Schema complet et final
--- Supabase SQL Editor → New query → Run
--- ============================================================
-
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ============================================================
 -- 1. COLLABORATEURS
--- ============================================================
+
 CREATE TABLE collaborateurs (
   id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   nom        TEXT NOT NULL,
@@ -30,15 +24,12 @@ CREATE POLICY "collab_insert" ON collaborateurs
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 
 -- Chacun modifie uniquement son propre profil
--- Changement de rôle géré via /api/set-role (service role)
 CREATE POLICY "collab_update" ON collaborateurs
   FOR UPDATE TO authenticated USING (auth.uid() = id);
 
--- Suppression via /api/delete-account (service role) uniquement
 
--- ============================================================
 -- 2. CLIENTS
--- ============================================================
+
 CREATE TABLE clients (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   raison_sociale    TEXT NOT NULL,
@@ -54,7 +45,7 @@ CREATE TABLE clients (
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 
 -- SELECT : tous les clients visibles par tous (nécessaire pour le formulaire de création de dossier)
--- La ségrégation se fait au niveau des dossiers, pas des clients
+
 CREATE POLICY "clients_select" ON clients
   FOR SELECT TO authenticated USING (true);
 
@@ -76,9 +67,9 @@ CREATE POLICY "clients_delete" ON clients
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
--- ============================================================
+
 -- 3. DOSSIERS FISCAUX
--- ============================================================
+
 CREATE TABLE dossiers_fiscaux (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id        UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
@@ -132,9 +123,12 @@ CREATE POLICY "dossiers_delete" ON dossiers_fiscaux
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
--- ============================================================
+-- Ajouter la colonne montant
+ALTER TABLE dossiers_fiscaux
+  ADD COLUMN IF NOT EXISTS montant NUMERIC(12,2) DEFAULT NULL;
+
+  
 -- 4. DOCUMENTS
--- ============================================================
 CREATE TABLE documents (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   dossier_id    UUID NOT NULL REFERENCES dossiers_fiscaux(id) ON DELETE CASCADE,
@@ -188,9 +182,8 @@ CREATE POLICY "documents_delete" ON documents
     )
   );
 
--- ============================================================
+
 -- 5. RELANCES
--- ============================================================
 CREATE TABLE relances (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   dossier_id     UUID NOT NULL REFERENCES dossiers_fiscaux(id) ON DELETE CASCADE,
@@ -232,9 +225,8 @@ CREATE POLICY "relances_insert" ON relances
     )
   );
 
--- ============================================================
+
 -- 6. MODELES RELANCE
--- ============================================================
 CREATE TABLE modeles_relance (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   nom         TEXT NOT NULL,
@@ -255,9 +247,8 @@ CREATE POLICY "modeles_insert" ON modeles_relance
 CREATE POLICY "modeles_delete" ON modeles_relance
   FOR DELETE TO authenticated USING (true);
 
--- ============================================================
+
 -- 7. COMMENTAIRES DOSSIERS
--- ============================================================
 CREATE TABLE commentaires_dossiers (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   dossier_id       UUID NOT NULL REFERENCES dossiers_fiscaux(id) ON DELETE CASCADE,
@@ -302,14 +293,13 @@ CREATE POLICY "commentaires_delete" ON commentaires_dossiers
     OR EXISTS (SELECT 1 FROM collaborateurs WHERE id = auth.uid() AND role = 'admin')
   );
 
--- ============================================================
+
 -- 8. HISTORIQUE STATUTS
--- ============================================================
 CREATE TABLE historique_statuts (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   dossier_id       UUID NOT NULL REFERENCES dossiers_fiscaux(id) ON DELETE CASCADE,
   collaborateur_id UUID REFERENCES collaborateurs(id) ON DELETE SET NULL,
-  ancien_statut    TEXT,                               -- nullable : premier changement depuis création
+  ancien_statut    TEXT,                               
   nouveau_statut   TEXT NOT NULL,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -333,9 +323,8 @@ CREATE POLICY "historique_select" ON historique_statuts
 CREATE POLICY "historique_insert" ON historique_statuts
   FOR INSERT TO authenticated WITH CHECK (true);
 
--- ============================================================
+
 -- 9. AUDIT LOGS
--- ============================================================
 CREATE TABLE audit_logs (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   collaborateur_id UUID REFERENCES collaborateurs(id) ON DELETE SET NULL,
@@ -346,16 +335,15 @@ CREATE TABLE audit_logs (
 
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Tous les collaborateurs authentifiés voient tous les logs (onglet Audit du cabinet)
+-- Tous les collaborateurs authentifiés voient tous les logs
 CREATE POLICY "audit_select" ON audit_logs
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "audit_insert" ON audit_logs
   FOR INSERT TO authenticated WITH CHECK (true);
 
--- ============================================================
--- 10. CONVERSATIONS ASSISTANT IA
--- ============================================================
+
+-- 10. assistant IA (conversations)
 CREATE TABLE conversations_assistant (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -366,7 +354,7 @@ CREATE TABLE conversations_assistant (
 
 ALTER TABLE conversations_assistant ENABLE ROW LEVEL SECURITY;
 
--- Chacun voit et gère uniquement ses propres conversations
+-- Chacun voit et gere uniquement ses propres conversations
 CREATE POLICY "conversations_select" ON conversations_assistant
   FOR SELECT TO authenticated USING (user_id = auth.uid());
 
@@ -379,9 +367,8 @@ CREATE POLICY "conversations_update" ON conversations_assistant
 CREATE POLICY "conversations_delete" ON conversations_assistant
   FOR DELETE TO authenticated USING (user_id = auth.uid());
 
--- ============================================================
+
 -- INDEXES (performance)
--- ============================================================
 CREATE INDEX idx_dossiers_client_id    ON dossiers_fiscaux(client_id);
 CREATE INDEX idx_dossiers_statut       ON dossiers_fiscaux(statut);
 CREATE INDEX idx_dossiers_echeance     ON dossiers_fiscaux(date_echeance);
@@ -394,13 +381,13 @@ CREATE INDEX idx_historique_dossier_id ON historique_statuts(dossier_id);
 CREATE INDEX idx_commentaires_dossier  ON commentaires_dossiers(dossier_id);
 CREATE INDEX idx_conversations_user_id ON conversations_assistant(user_id);
 
--- ============================================================
+
 -- STORAGE BUCKETS
--- Créer manuellement dans Storage si non existants :
--- • documents-fiscaux  → privé
--- • avatars            → public
+-- pour creer manuellement dans Storage si non existants :
+--  documents-fiscaux en privé
+--  avatars en public
 --
--- Policies Storage (SQL Editor) :
+-- Pour creer les Policies Storage (Dans SQL Editor) :
 --
 -- CREATE POLICY "avatars_public_read" ON storage.objects
 --   FOR SELECT USING (bucket_id = 'avatars');
@@ -414,4 +401,4 @@ CREATE INDEX idx_conversations_user_id ON conversations_assistant(user_id);
 --   FOR ALL TO authenticated
 --   USING (bucket_id = 'documents-fiscaux')
 --   WITH CHECK (bucket_id = 'documents-fiscaux');
--- ============================================================
+

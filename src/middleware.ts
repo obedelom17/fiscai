@@ -4,17 +4,17 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
-  // Laisser passer le callback OAuth (échange du code)
+  // laisser passer le callback OAuth 
   if (pathname.startsWith('/auth/callback')) {
     return NextResponse.next()
   }
 
-  // Laisser passer la page 2FA (gérée côté client)
+  // laisser passer la page 2FA (gérée côté client)
   if (pathname.startsWith('/securite')) {
     return NextResponse.next()
   }
 
-  // Laisser passer les assets statiques
+  // laisser passer les assets statiques
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
     mfaRequired = aal?.nextLevel === 'aal2' && aal?.currentLevel !== 'aal2'
   }
 
-  // Si pas connecté et pas sur /auth → redirige vers /auth
+  // si pas connecté et pas sur /auth ça va rediriger vers /auth
   if (!user && !pathname.startsWith('/auth')) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
@@ -62,7 +62,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // MFA requis : bloquer l'accès aux pages protégées sauf /auth et /securite
+  // MFA requis donc bloquer l'accès aux pages protégées sauf /auth et /securite
   if (user && mfaRequired && !pathname.startsWith('/auth') && !pathname.startsWith('/securite')) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
@@ -70,8 +70,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Si connecté (MFA OK) et sur /auth → redirige vers /dashboard
-  // Sauf écran post-inscription (?welcome=1) ou vérification MFA (?mfa=1)
+  // si connecté (MFA OK) et sur /auth → redirige vers /dashboard
   if (user && !mfaRequired && pathname === '/auth' && !searchParams.get('welcome') && !searchParams.get('mfa')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'

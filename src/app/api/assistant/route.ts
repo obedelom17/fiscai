@@ -19,7 +19,7 @@ function getAdmin() {
   )
 }
 
-// ── Tools Groq ─────────────────────────────────────────────
+// Groq 
 const tools: Groq.Chat.Completions.ChatCompletionTool[] = [
   {
     type: 'function',
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
       role: 'system',
       content: `Tu es FiscAl, un assistant fiscal intelligent pour le cabinet Experts Afrique Conseils au Togo.
 Tu aides les collaborateurs à analyser les dossiers fiscaux de leurs clients.
-Tu connais la fiscalité togolaise : TVA, IRPP, Impôt sur les Sociétés, OTR.
+Tu connais la fiscalité togolaise : TVA, IRPP, Impôt sur les Sociétés,Acompte OTR,Patente, Retenue Sur Loyer, Droit d’Enregistrement, Taxe d’Habitation, Taxe Foncière sur Propriétés Bâties et Taxe Foncière sur Propriétés Non Bâties.
 Tu te souviens des échanges précédents et tu en tiens compte.
 Tu peux envoyer des relances email ou WhatsApp en utilisant les outils disponibles.
 Quand on te demande d'envoyer une relance, génère d'abord un message professionnel adapté puis utilise l'outil approprié.
@@ -214,7 +214,7 @@ Réponds en français, de manière concise et professionnelle.`,
     const choice = completion.choices[0]
     const toolCalls = choice.message.tool_calls
 
-    // Pas de tool call → réponse directe
+    // Pas de tool call, réponse directe
     if (!toolCalls || toolCalls.length === 0) {
       return NextResponse.json({ reponse: choice.message.content })
     }
@@ -237,7 +237,7 @@ Réponds en français, de manière concise et professionnelle.`,
       }
     }
 
-    // Deuxième appel pour synthèse
+    // Deuxième appel pour synthèse final
     const finalCompletion = await groq.chat.completions.create({
       model: 'openai/gpt-oss-20b',
       messages: [
