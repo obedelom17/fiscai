@@ -39,6 +39,7 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
   const [documents, setDocuments] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [showModeles, setShowModeles] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const STATUT_COULEURS: Record<string, string> = {
@@ -76,6 +77,12 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
     chargerDocs()
   }
 
+  function utiliserModele(contenu: string, nom: string) {
+    setMessageRelance(contenu)
+    setShowModeles(false)
+    toast(`Modèle "${nom}" chargé`, 'success')
+  }
+
   const onglets = [
     { key: 'relance', label: 'Relance & Documents' },
     { key: 'commentaires', label: 'Commentaires' },
@@ -86,7 +93,7 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
-      {/* En-tête panel */}
+      {/* En-tête */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between"
         style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
         <div>
@@ -151,6 +158,8 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
             {/* Relance IA */}
             <div>
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Relance IA</h4>
+
+              {/* Canal */}
               <div className="flex gap-2 mb-3">
                 {(['email', 'whatsapp'] as const).map(c => (
                   <button key={c} onClick={() => setCanalRelance(c)}
@@ -162,9 +171,44 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
                   </button>
                 ))}
               </div>
+
+              {/* Bouton modèles */}
+              {modeles.length > 0 && (
+                <div className="mb-3">
+                  <button onClick={() => setShowModeles(v => !v)}
+                    className="w-full py-2 rounded-xl text-xs font-medium border transition-all"
+                    style={{ background: showModeles ? '#f0f4f1' : '#fff', color: '#2d6a4f', borderColor: '#d1fae5' }}>
+                    {showModeles ? 'Masquer les modèles' : `Utiliser un modèle (${modeles.length} disponible${modeles.length > 1 ? 's' : ''})`}
+                  </button>
+                  <AnimatePresence>
+                    {showModeles && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                        className="mt-2 space-y-1.5 overflow-hidden">
+                        {modeles.map(m => (
+                          <div key={m.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-gray-100 bg-gray-50">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-gray-700 truncate">{m.nom}</p>
+                              <p className="text-xs text-gray-400 truncate">{m.contenu?.slice(0, 60)}...</p>
+                            </div>
+                            <button onClick={() => utiliserModele(m.contenu, m.nom)}
+                              className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg text-white font-medium"
+                              style={{ background: '#2d6a4f' }}>
+                              Utiliser
+                            </button>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* Textarea */}
               <textarea value={messageRelance} onChange={e => setMessageRelance(e.target.value)} rows={5}
-                placeholder="Cliquez sur Générer pour créer un message..."
+                placeholder="Cliquez sur Générer ou choisissez un modèle..."
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 mb-3" />
+
+              {/* Boutons action */}
               <div className="flex gap-2">
                 <button onClick={onGenererRelance} disabled={generatingRelance}
                   className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
@@ -177,13 +221,30 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
                   {sendingRelance ? 'Envoi...' : 'Envoyer'}
                 </button>
               </div>
+
+              {/* Historique relances du dossier */}
+              {relancesOnglet.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Historique relances</p>
+                  <div className="space-y-1.5">
+                    {relancesOnglet.map(r => (
+                      <div key={r.id} className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${r.canal === 'whatsapp' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {r.canal === 'whatsapp' ? 'WA' : 'Email'}
+                        </span>
+                        <span>{new Date(r.date_envoi).toLocaleDateString('fr-FR')}</span>
+                        <span className="truncate flex-1">{r.contenu_email?.slice(0, 40)}...</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {onglet === 'commentaires' && <DossierCommentaires dossierId={dossier.id} />}
         {onglet === 'historique' && <HistoriqueStatuts dossierId={dossier.id} />}
-
       </div>
     </motion.div>
   )

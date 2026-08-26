@@ -36,7 +36,6 @@ export default function DossiersPage() {
   const supabase = createClient()
   const { toast } = useToast()
 
-  // Données
   const [dossiers, setDossiers] = useState<Dossier[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [relances, setRelances] = useState<any[]>([])
@@ -44,7 +43,6 @@ export default function DossiersPage() {
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  // UI
   const [onglet, setOnglet] = useState<'dossiers' | 'relances' | 'modeles' | 'audit'>('dossiers')
   const [filtreStatut, setFiltreStatut] = useState('tous')
   const [showForm, setShowForm] = useState(false)
@@ -53,7 +51,6 @@ export default function DossiersPage() {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(true)
 
-  // Formulaire
   const [clientId, setClientId] = useState('')
   const [typeImpot, setTypeImpot] = useState('TVA')
   const [periodeMois, setPeriodeMois] = useState(1)
@@ -63,11 +60,16 @@ export default function DossiersPage() {
   const [montant, setMontant] = useState(0)
   const [saving, setSaving] = useState(false)
 
-  // Relance
   const [canalRelance, setCanalRelance] = useState('email')
   const [messageRelance, setMessageRelance] = useState('')
   const [sendingRelance, setSendingRelance] = useState(false)
   const [generatingRelance, setGeneratingRelance] = useState(false)
+
+  // Modèles — formulaire création
+  const [showModeleForm, setShowModeleForm] = useState(false)
+  const [modeleNom, setModeleNom] = useState('')
+  const [modeleContenu, setModeleContenu] = useState('')
+  const [savingModele, setSavingModele] = useState(false)
 
   useEffect(() => { charger() }, [])
 
@@ -86,7 +88,6 @@ export default function DossiersPage() {
     setModeles(m || [])
     setAuditLogs(a || [])
 
-    // Suggestions IA proactives
     const sugg: string[] = []
     const aujourd = new Date()
     const retards = (d || []).filter((x: Dossier) => new Date(x.date_echeance) < aujourd && x.statut !== 'televerse_otr')
@@ -208,6 +209,25 @@ export default function DossiersPage() {
     setSendingRelance(false)
   }
 
+  async function creerModele() {
+    if (!modeleNom.trim() || !modeleContenu.trim()) {
+      toast('Nom et contenu requis', 'error'); return
+    }
+    setSavingModele(true)
+    const { error } = await supabase.from('modeles_relance').insert({ nom: modeleNom.trim(), contenu: modeleContenu.trim() })
+    if (error) { toast('Erreur création modèle', 'error'); setSavingModele(false); return }
+    await supabase.from('audit_logs').insert({ action: 'CREATION_MODELE', details: `Modèle "${modeleNom}" créé` })
+    toast('Modèle créé', 'success')
+    setModeleNom(''); setModeleContenu(''); setShowModeleForm(false)
+    setSavingModele(false); charger()
+  }
+
+  async function supprimerModele(id: string, nom: string) {
+    if (!confirm(`Supprimer le modèle "${nom}" ?`)) return
+    await supabase.from('modeles_relance').delete().eq('id', id)
+    toast('Modèle supprimé', 'success'); charger()
+  }
+
   const dossiersFiltres = dossiers.filter(d => filtreStatut === 'tous' || d.statut === filtreStatut)
 
   if (loading) return (
@@ -275,7 +295,7 @@ export default function DossiersPage() {
           )}
         </AnimatePresence>
 
-        {/* Formulaire */}
+        {/* Formulaire dossier */}
         <AnimatePresence>
           {showForm && (
             <DossierForm
@@ -292,7 +312,7 @@ export default function DossiersPage() {
           )}
         </AnimatePresence>
 
-        {/* Onglets principaux */}
+        {/* Onglets */}
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
           {(['dossiers', 'relances', 'modeles', 'audit'] as const).map(o => (
             <button key={o} onClick={() => setOnglet(o)}
@@ -300,7 +320,7 @@ export default function DossiersPage() {
               style={onglet === o
                 ? { background: '#1a3c2e', color: '#fff' }
                 : { background: '#fff', color: '#2d6a4f', border: '1px solid #d1fae5' }}>
-              {o === 'dossiers' && `Dossiers`}
+              {o === 'dossiers' && 'Dossiers'}
               {o === 'relances' && `Relances (${relances.length})`}
               {o === 'modeles' && `Modèles (${modeles.length})`}
               {o === 'audit' && `Audit (${auditLogs.length})`}
@@ -308,12 +328,10 @@ export default function DossiersPage() {
           ))}
         </div>
 
-        {/* Onglet Dossiers */}
+        {/* ONGLET DOSSIERS */}
         {onglet === 'dossiers' && (
           <div className={`grid grid-cols-1 gap-5 ${dossierActif ? 'lg:grid-cols-2' : ''}`}>
-            {/* Liste */}
             <div>
-              {/* Filtres */}
               <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
                 {[
                   { key: 'tous', label: 'Tous' },
@@ -332,69 +350,68 @@ export default function DossiersPage() {
                 ))}
               </div>
 
-              {/* Table desktop */}
               <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px]">
-                  <thead>
-                    <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-                      {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Montant (FCFA)', 'Changer statut', 'Actions'].map(h => (
-                        <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-white uppercase tracking-wide whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dossiersFiltres.map((d, i) => {
-                      const enRetard = new Date(d.date_echeance) < new Date() && d.statut !== 'televerse_otr'
-                      return (
-                        <tr key={d.id} className="border-b border-gray-50 hover:bg-green-50 transition-colors cursor-pointer"
-                          style={{ background: dossierActif?.id === d.id ? '#f0f7f3' : i % 2 === 0 ? 'white' : '#fafffe' }}
-                          onClick={() => setDossierActif(dossierActif?.id === d.id ? null : d)}>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                                style={{ background: '#2d6a4f' }}>
-                                {d.clients?.raison_sociale?.[0]?.toUpperCase()}
+                  <table className="w-full min-w-[900px]">
+                    <thead>
+                      <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                        {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Montant (FCFA)', 'Changer statut', 'Actions'].map(h => (
+                          <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-white uppercase tracking-wide whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dossiersFiltres.map((d, i) => {
+                        const enRetard = new Date(d.date_echeance) < new Date() && d.statut !== 'televerse_otr'
+                        return (
+                          <tr key={d.id} className="border-b border-gray-50 hover:bg-green-50 transition-colors cursor-pointer"
+                            style={{ background: dossierActif?.id === d.id ? '#f0f7f3' : i % 2 === 0 ? 'white' : '#fafffe' }}
+                            onClick={() => setDossierActif(dossierActif?.id === d.id ? null : d)}>
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                  style={{ background: '#2d6a4f' }}>
+                                  {d.clients?.raison_sociale?.[0]?.toUpperCase()}
+                                </div>
+                                <span className="text-sm font-medium text-gray-800 truncate max-w-[100px]">{d.clients?.raison_sociale}</span>
                               </div>
-                              <span className="text-sm font-medium text-gray-800 truncate max-w-[100px]">{d.clients?.raison_sociale}</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <span className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>{d.type_impot}</span>
-                          </td>
-                          <td className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap">{formatPeriode(d.type_impot, d.periode_mois, d.periode_annee)}</td>
-                          <td className="px-3 py-3 text-sm whitespace-nowrap" style={{ color: enRetard ? '#dc2626' : '#374151', fontWeight: enRetard ? 600 : 400 }}>
-                            {d.date_echeance ? new Date(d.date_echeance).toLocaleDateString('fr-FR') : '—'}
-                          </td>
-                          <td className="px-3 py-3">
-                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${STATUT_COULEURS[d.statut]}`}>
-                              {STATUT_LABELS[d.statut as keyof typeof STATUT_LABELS]}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-sm font-medium whitespace-nowrap" style={{ color: '#1a3c2e' }}>
-                            {d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} FCFA` : '—'}
-                          </td>
-                          <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                            <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
-                              className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none">
-                              <option value="en_attente">En attente</option>
-                              <option value="recu">Reçu</option>
-                              <option value="valide">Validé</option>
-                              <option value="televerse_otr">Téléversé OTR</option>
-                            </select>
-                          </td>
-                          <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => setDossierActif(d)} className="text-xs text-green-600 hover:underline">Gérer</button>
-                              <button onClick={() => ouvrirEdition(d)} className="text-xs text-blue-500 hover:underline">Modifier</button>
-                              <button onClick={() => supprimerDossier(d.id)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="px-3 py-3">
+                              <span className="text-xs font-semibold px-2 py-1 rounded-lg" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>{d.type_impot}</span>
+                            </td>
+                            <td className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap">{formatPeriode(d.type_impot, d.periode_mois, d.periode_annee)}</td>
+                            <td className="px-3 py-3 text-sm whitespace-nowrap" style={{ color: enRetard ? '#dc2626' : '#374151', fontWeight: enRetard ? 600 : 400 }}>
+                              {d.date_echeance ? new Date(d.date_echeance).toLocaleDateString('fr-FR') : '—'}
+                            </td>
+                            <td className="px-3 py-3">
+                              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${STATUT_COULEURS[d.statut]}`}>
+                                {STATUT_LABELS[d.statut as keyof typeof STATUT_LABELS]}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-sm font-medium whitespace-nowrap" style={{ color: '#1a3c2e' }}>
+                              {d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} FCFA` : '—'}
+                            </td>
+                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                              <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none">
+                                <option value="en_attente">En attente</option>
+                                <option value="recu">Reçu</option>
+                                <option value="valide">Validé</option>
+                                <option value="televerse_otr">Téléversé OTR</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => setDossierActif(d)} className="text-xs text-green-600 hover:underline">Gérer</button>
+                                <button onClick={() => ouvrirEdition(d)} className="text-xs text-blue-500 hover:underline">Modifier</button>
+                                <button onClick={() => supprimerDossier(d.id)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
                 {dossiersFiltres.length === 0 && (
                   <div className="text-center py-12 text-gray-400 text-sm">Aucun dossier</div>
@@ -442,7 +459,6 @@ export default function DossiersPage() {
               </div>
             </div>
 
-            {/* Panel dossier actif */}
             <AnimatePresence>
               {dossierActif && (
                 <DossierPanel
@@ -465,7 +481,7 @@ export default function DossiersPage() {
           </div>
         )}
 
-        {/* Onglet Relances */}
+        {/* ONGLET RELANCES */}
         {onglet === 'relances' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
@@ -502,21 +518,75 @@ export default function DossiersPage() {
           </div>
         )}
 
-        {/* Onglet Modèles */}
+        {/* ONGLET MODÈLES */}
         {onglet === 'modeles' && (
-          <div className="space-y-3">
-            {modeles.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 text-gray-400 text-sm">Aucun modèle de relance</div>
-            ) : modeles.map(m => (
-              <div key={m.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-                <p className="font-semibold text-gray-800 text-sm mb-1">{m.nom}</p>
-                <p className="text-xs text-gray-500 truncate">{m.contenu}</p>
+          <div className="space-y-4">
+            {/* Bouton + formulaire création */}
+            <div className="flex justify-end">
+              <button onClick={() => setShowModeleForm(v => !v)}
+                className="px-4 py-2 rounded-xl text-white text-sm font-medium"
+                style={{ background: '#1a3c2e' }}>
+                {showModeleForm ? 'Annuler' : '+ Nouveau modèle'}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {showModeleForm && (
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+                  <p className="text-sm font-semibold text-gray-700">Nouveau modèle de relance</p>
+                  <input
+                    value={modeleNom} onChange={e => setModeleNom(e.target.value)}
+                    placeholder="Nom du modèle (ex: Relance TVA urgente)"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <textarea
+                    value={modeleContenu} onChange={e => setModeleContenu(e.target.value)}
+                    placeholder="Contenu du modèle... Vous pouvez utiliser {client}, {impot}, {echeance} comme variables."
+                    rows={5}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <button onClick={creerModele} disabled={savingModele}
+                    className="w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
+                    style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                    {savingModele ? 'Enregistrement...' : 'Enregistrer le modèle'}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Liste modèles */}
+            {modeles.length === 0 && !showModeleForm ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 text-gray-400 text-sm">
+                Aucun modèle de relance — cliquez sur "+ Nouveau modèle" pour en créer un.
               </div>
-            ))}
+            ) : (
+              modeles.map(m => (
+                <motion.div key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="font-semibold text-gray-800 text-sm">{m.nom}</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setMessageRelance(m.contenu); setOnglet('dossiers'); toast('Modèle chargé — sélectionnez un dossier', 'success') }}
+                        className="text-xs px-3 py-1 rounded-lg text-white font-medium"
+                        style={{ background: '#2d6a4f' }}>
+                        Utiliser
+                      </button>
+                      <button onClick={() => supprimerModele(m.id, m.nom)}
+                        className="text-xs px-3 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50">
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 whitespace-pre-wrap line-clamp-3">{m.contenu}</p>
+                </motion.div>
+              ))
+            )}
           </div>
         )}
 
-        {/* Onglet Audit */}
+        {/* ONGLET AUDIT */}
         {onglet === 'audit' && <AuditTab logs={auditLogs} />}
       </div>
     </div>
