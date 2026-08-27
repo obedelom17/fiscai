@@ -159,7 +159,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           messages.length > 1 ? (
             <button onClick={reinitialiser}
               className="px-3 py-1.5 rounded-xl text-white text-xs font-medium"
-              style={{ background: 'rgba(255,255,255,0.2)' }}>
+              style={{ background: '#e8a317', color: '#1a3c2e', fontWeight: 600 }}>
               Nouvelle conversation
             </button>
           ) : undefined

@@ -540,11 +540,33 @@ export default function DossiersPage() {
                     placeholder="Nom du modèle (ex: Relance TVA urgente)"
                     className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
+                  {/* Variables disponibles */}
+                  <div className="rounded-xl border border-dashed p-3" style={{ borderColor: '#2d6a4f', background: '#f0f4f1' }}>
+                    <p className="text-xs font-semibold mb-2" style={{ color: '#1a3c2e' }}>Variables disponibles — cliquez pour insérer</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { v: '{client}', desc: 'Raison sociale' },
+                        { v: '{impot}', desc: 'Type d\'impôt' },
+                        { v: '{echeance}', desc: 'Date d\'échéance' },
+                        { v: '{periode}', desc: 'Mois / Année' },
+                        { v: '{montant}', desc: 'Montant FCFA' },
+                      ].map(({ v, desc }) => (
+                        <button key={v} type="button"
+                          onClick={() => setModeleContenu(c => c + v)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all hover:opacity-80"
+                          style={{ background: '#fff', borderColor: '#2d6a4f', color: '#1a3c2e' }}
+                          title={desc}>
+                          <code className="font-mono">{v}</code>
+                          <span className="text-gray-400 ml-1">→ {desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <textarea
                     value={modeleContenu} onChange={e => setModeleContenu(e.target.value)}
-                    placeholder="Contenu du modèle... Vous pouvez utiliser {client}, {impot}, {echeance} comme variables."
-                    rows={5}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Bonjour {client}, votre déclaration {impot} pour la période {periode} arrive à échéance le {echeance}..."
+                    rows={6}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
                   />
                   <button onClick={creerModele} disabled={savingModele}
                     className="w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
