@@ -78,7 +78,20 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
   }
 
   function utiliserModele(contenu: string, nom: string) {
-    setMessageRelance(contenu)
+    const mois = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
+    const periode = dossier.periode_mois
+      ? `${mois[dossier.periode_mois - 1]} ${dossier.periode_annee}`
+      : String(dossier.periode_annee)
+    const echeance = dossier.date_echeance
+      ? new Date(dossier.date_echeance).toLocaleDateString('fr-FR')
+      : ''
+    const rempli = contenu
+      .replace(/\{client\}/gi, dossier.clients?.raison_sociale || '')
+      .replace(/\{impot\}/gi, dossier.type_impot || '')
+      .replace(/\{echeance\}/gi, echeance)
+      .replace(/\{periode\}/gi, periode)
+      .replace(/\{montant\}/gi, dossier.montant ? `${Number(dossier.montant).toLocaleString('fr-FR')} FCFA` : '')
+    setMessageRelance(rempli)
     setShowModeles(false)
     toast(`Modèle "${nom}" chargé`, 'success')
   }
@@ -129,7 +142,7 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
       <div className="p-4">
         {/* Onglet Relance & Documents */}
         {onglet === 'relance' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-6">
             {/* Upload */}
             <div>
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Documents</h4>
