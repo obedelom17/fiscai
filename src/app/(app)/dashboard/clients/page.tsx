@@ -1,9 +1,9 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import { usePersistentState, hasCache } from '@/lib/cache'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '@/components/PageHeader'
 import { useToast } from '@/components/Toast'
@@ -23,14 +23,14 @@ const REGIME_LABELS: Record<string, string> = {
   TPU_F: 'TPU Forfaitaire', TPU_D: 'TPU Déclaratif',
 }
 const REGIME_COLORS: Record<string, string> = {
-  RR_TVA: 'bg-blue-100 text-blue-700', RR_STVA: 'bg-purple-100 text-purple-700',
-  TPU_F: 'bg-orange-100 text-orange-700', TPU_D: 'bg-green-100 text-green-700',
+  RR_TVA: 'bg-green-100 text-green-800', RR_STVA: 'bg-gray-100 text-gray-700',
+  TPU_F: 'bg-amber-100 text-amber-800', TPU_D: 'bg-emerald-50 text-emerald-700',
 }
 
 export default function ClientsPage() {
   const { toast } = useToast()
-  const [clients, setClients] = useState<Client[]>([])
-  const [loading, setLoading] = useState(true)
+  const [clients, setClients] = usePersistentState<Client[]>('clients.list', [])
+  const [loading, setLoading] = useState(!hasCache('clients.list'))
   const [showForm, setShowForm] = useState(false)
   const [clientEnEdition, setClientEnEdition] = useState<Client | null>(null)
   const [clientASupprimer, setClientASupprimer] = useState<Client | null>(null)
@@ -101,12 +101,10 @@ export default function ClientsPage() {
       <PageHeader
         titre="Portefeuille Clients"
         sousTitre={`${clients.length} entreprise(s) enregistrée(s)`}
-        imageUrl="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&q=80"
         bouton={
           <motion.button onClick={() => ouvrirFormulaire()}
-            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            className="px-4 py-2 rounded-xl text-white font-medium shadow-lg text-sm"
-            style={{ background: 'linear-gradient(135deg, #e8a317, #d4940f)' }}>
+            className="px-4 py-2 rounded-md text-white font-medium text-sm"
+            style={{ background: '#e8a317' }}>
             + Nouveau
           </motion.button>
         }
@@ -117,20 +115,20 @@ export default function ClientsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
           {[
             { label: 'Total', value: clients.length, color: '#2d6a4f' },
-            { label: 'Réel TVA', value: clients.filter(c => c.regime_fiscal === 'RR_TVA').length, color: '#3b82f6' },
-            { label: 'Réel sans TVA', value: clients.filter(c => c.regime_fiscal === 'RR_STVA').length, color: '#8b5cf6' },
-            { label: 'TPU', value: clients.filter(c => c.regime_fiscal.startsWith('TPU')).length, color: '#e8a317' },
+            { label: 'Réel TVA', value: clients.filter(c => c.regime_fiscal === 'RR_TVA').length, color: '#2d6a4f' },
+            { label: 'Réel sans TVA', value: clients.filter(c => c.regime_fiscal === 'RR_STVA').length, color: '#2d6a4f' },
+            { label: 'TPU', value: clients.filter(c => c.regime_fiscal.startsWith('TPU')).length, color: '#2d6a4f' },
           ].map((s, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-              className="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-500 uppercase font-semibold">{s.label}</p>
-              <p className="text-2xl md:text-3xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+            <motion.div key={i}
+              className="bg-white rounded-lg p-4 md:p-5 shadow-sm border border-gray-100">
+              <p className="text-xs text-gray-500 font-semibold">{s.label}</p>
+              <p className="text-2xl md:text-3xl font-semibold mt-1" style={{ color: s.color }}>{s.value}</p>
             </motion.div>
           ))}
         </div>
 
         {/* Recherche */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 md:p-4 mb-4 flex items-center gap-3">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 md:p-4 mb-4 flex items-center gap-3">
           <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
           </svg>
@@ -146,9 +144,9 @@ export default function ClientsPage() {
         <AnimatePresence>
           {showForm && (
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 md:p-6 mb-6">
+              className="bg-white rounded-lg border border-gray-100 p-5 md:p-6 mb-6">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-base md:text-lg font-bold" style={{ color: '#1a3c2e' }}>
+                <h2 className="text-base md:text-lg font-semibold" style={{ color: '#1a3c2e' }}>
                   {clientEnEdition ? 'Modifier le client' : 'Nouveau client'}
                 </h2>
                 <button onClick={() => { setShowForm(false); setClientEnEdition(null) }} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
@@ -162,15 +160,15 @@ export default function ClientsPage() {
                   { label: 'Téléphone (WhatsApp)', value: telephone, set: setTelephone, placeholder: '+228 90 00 00 00', type: 'tel' },
                 ].map(f => (
                   <div key={f.label}>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">{f.label}</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{f.label}</label>
                     <input type={f.type} value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.placeholder}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                      className="w-full border border-gray-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 ))}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Régime fiscal</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Régime fiscal</label>
                   <select value={regime_fiscal} onChange={e => setRegime(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                    className="w-full border border-gray-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="RR_TVA">Régime Réel avec TVA</option>
                     <option value="RR_STVA">Régime Réel sans TVA</option>
                     <option value="TPU_F">TPU Forfaitaire</option>
@@ -180,13 +178,12 @@ export default function ClientsPage() {
               </div>
               <div className="flex gap-3 mt-5">
                 <motion.button onClick={sauvegarderClient} disabled={saving || !raison_sociale.trim()}
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                  className="px-6 py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-50"
+                  style={{ background: '#2d6a4f' }}>
                   {saving ? 'Enregistrement...' : clientEnEdition ? 'Modifier' : 'Enregistrer'}
                 </motion.button>
                 <button onClick={() => { setShowForm(false); setClientEnEdition(null) }}
-                  className="px-6 py-2.5 rounded-xl text-sm border border-gray-200 text-gray-600">Annuler</button>
+                  className="px-6 py-2.5 rounded-md text-sm border border-gray-200 text-gray-600">Annuler</button>
               </div>
             </motion.div>
           )}
@@ -199,18 +196,18 @@ export default function ClientsPage() {
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
               style={{ background: 'rgba(0,0,0,0.5)' }}>
               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-                className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-                <h3 className="text-lg font-bold text-gray-800 mb-2">Supprimer ce client ?</h3>
+                className="bg-white rounded-lg p-6 max-w-md w-full">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Supprimer ce client ?</h3>
                 <p className="text-gray-500 text-sm mb-6">
                   <strong>{clientASupprimer.raison_sociale}</strong> et tous ses dossiers seront supprimés définitivement.
                 </p>
                 <div className="flex gap-3">
                   <button onClick={supprimerClient} disabled={supprimant}
-                    className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium bg-red-600 disabled:opacity-50">
+                    className="flex-1 py-2.5 rounded-md text-white text-sm font-medium bg-red-600 disabled:opacity-50">
                     {supprimant ? 'Suppression...' : 'Supprimer'}
                   </button>
                   <button onClick={() => setClientASupprimer(null)}
-                    className="flex-1 py-2.5 rounded-xl text-sm border border-gray-200 text-gray-600">Annuler</button>
+                    className="flex-1 py-2.5 rounded-md text-sm border border-gray-200 text-gray-600">Annuler</button>
                 </div>
               </motion.div>
             </motion.div>
@@ -223,18 +220,18 @@ export default function ClientsPage() {
             <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
           </div>
         ) : clientsFiltres.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+          <div className="text-center py-16 bg-white rounded-lg border border-gray-100">
             <p className="text-gray-400 text-sm">{recherche ? 'Aucun résultat' : 'Aucun client enregistré'}</p>
           </div>
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
               <table className="w-full">
                 <thead>
-                  <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                  <tr style={{ background: '#f3f6f4', borderBottom: '1px solid #e3e8e5' }}>
                     {['Raison sociale', 'NIF', 'Régime', 'Secteur', 'Email', 'Tél.', 'Actions'].map(h => (
-                      <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-white uppercase tracking-wider">{h}</th>
+                      <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-gray-600">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -244,8 +241,8 @@ export default function ClientsPage() {
                       style={{ background: i % 2 === 0 ? 'white' : '#fafffe' }}>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                            style={{ background: '#e8f0eb', color: '#2d6a4f' }}>
                             {c.raison_sociale[0].toUpperCase()}
                           </div>
                           <span className="text-sm font-semibold text-gray-800">{c.raison_sociale}</span>
@@ -279,11 +276,11 @@ export default function ClientsPage() {
             {/* Mobile cards */}
             <div className="md:hidden space-y-3">
               {clientsFiltres.map(c => (
-                <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                <div key={c.id} className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                      <div className="w-9 h-9 rounded-md flex items-center justify-center text-sm font-semibold flex-shrink-0"
+                        style={{ background: '#e8f0eb', color: '#2d6a4f' }}>
                         {c.raison_sociale[0].toUpperCase()}
                       </div>
                       <div className="min-w-0">

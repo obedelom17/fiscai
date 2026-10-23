@@ -1,9 +1,9 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import { usePersistentState, hasCache } from '@/lib/cache'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '@/components/PageHeader'
 import { useToast } from '@/components/Toast'
@@ -36,12 +36,12 @@ export default function DossiersPage() {
   const supabase = createClient()
   const { toast } = useToast()
 
-  const [dossiers, setDossiers] = useState<Dossier[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [relances, setRelances] = useState<any[]>([])
-  const [modeles, setModeles] = useState<any[]>([])
-  const [auditLogs, setAuditLogs] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dossiers, setDossiers] = usePersistentState<Dossier[]>('dossiers.list', [])
+  const [clients, setClients] = usePersistentState<Client[]>('dossiers.clients', [])
+  const [relances, setRelances] = usePersistentState<any[]>('dossiers.relances', [])
+  const [modeles, setModeles] = usePersistentState<any[]>('dossiers.modeles', [])
+  const [auditLogs, setAuditLogs] = usePersistentState<any[]>('dossiers.audit', [])
+  const [loading, setLoading] = useState(!hasCache('dossiers.list'))
 
   const [onglet, setOnglet] = useState<'dossiers' | 'relances' | 'modeles' | 'audit'>('dossiers')
   const [filtreStatut, setFiltreStatut] = useState('tous')
@@ -74,7 +74,6 @@ export default function DossiersPage() {
   useEffect(() => { charger() }, [])
 
   async function charger() {
-    setLoading(true)
     const [{ data: d }, { data: c }, { data: r }, { data: m }, { data: a }] = await Promise.all([
       supabase.from('dossiers_fiscaux').select('*, clients(raison_sociale, email_contact, telephone), collaborateurs(nom, prenom)').order('created_at', { ascending: false }),
       supabase.from('clients').select('id, raison_sociale').order('raison_sociale'),
@@ -188,7 +187,7 @@ export default function DossiersPage() {
         await emailjs.send(
           process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
           process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-          { to_email: dossierActif.clients.email_contact, from_name: 'Experts Afrique Conseils', message: messageRelance },
+          { to_email: dossierActif.clients.email_contact, from_name: 'FiscAI', message: messageRelance },
           process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
         )
       } else {
@@ -246,11 +245,10 @@ export default function DossiersPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
-      <PageHeader titre="Dossiers Fiscaux" sousTitre="Suivi des obligations fiscales — OTR Togo"
-        imageUrl="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80"
+      <PageHeader titre="Dossiers Fiscaux" sousTitre="Suivi des obligations fiscales OTR"
         bouton={
           <button onClick={() => { resetForm(); setShowForm(true) }}
-            className="px-4 py-2 rounded-xl text-white text-sm font-medium"
+            className="px-4 py-2 rounded-md text-white text-sm font-medium"
             style={{ background: 'rgba(232,163,23,0.9)', backdropFilter: 'blur(4px)' }}>
             + Nouveau
           </button>
@@ -266,10 +264,10 @@ export default function DossiersPage() {
             { label: 'Reçus', value: stats.recu, color: '#2563eb' },
             { label: 'Validés', value: stats.valide, color: '#2d6a4f' },
           ].map((s, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-              className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-500 uppercase font-semibold tracking-wide">{s.label}</p>
-              <p className="text-3xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+            <motion.div key={i}
+              className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+              <p className="text-xs text-gray-500 font-semibold">{s.label}</p>
+              <p className="text-3xl font-semibold mt-1" style={{ color: s.color }}>{s.value}</p>
             </motion.div>
           ))}
         </div>
@@ -278,10 +276,10 @@ export default function DossiersPage() {
         <AnimatePresence>
           {showSuggestions && suggestions.length > 0 && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-              className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5">
+              className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Suggestions IA</p>
+                  <p className="text-xs font-semibold text-amber-700 mb-2">Suggestions IA</p>
                   {suggestions.map((s, i) => (
                     <div key={i} className="flex items-start gap-2 text-sm text-amber-700">
                       <span className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -316,7 +314,7 @@ export default function DossiersPage() {
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
           {(['dossiers', 'relances', 'modeles', 'audit'] as const).map(o => (
             <button key={o} onClick={() => setOnglet(o)}
-              className="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all"
+              className="px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all"
               style={onglet === o
                 ? { background: '#1a3c2e', color: '#fff' }
                 : { background: '#fff', color: '#2d6a4f', border: '1px solid #d1fae5' }}>
@@ -341,7 +339,7 @@ export default function DossiersPage() {
                   { key: 'televerse_otr', label: 'OTR' },
                 ].map(f => (
                   <button key={f.key} onClick={() => setFiltreStatut(f.key)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all"
+                    className="px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-all"
                     style={filtreStatut === f.key
                       ? { background: '#1a3c2e', color: '#fff' }
                       : { background: '#fff', color: '#4a7c5e', border: '1px solid #d1fae5' }}>
@@ -350,13 +348,13 @@ export default function DossiersPage() {
                 ))}
               </div>
 
-              <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px]">
                     <thead>
-                      <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                      <tr style={{ background: '#f3f6f4', borderBottom: '1px solid #e3e8e5' }}>
                         {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Montant (FCFA)', 'Changer statut', 'Actions'].map(h => (
-                          <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-white uppercase tracking-wide whitespace-nowrap">{h}</th>
+                          <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -369,8 +367,8 @@ export default function DossiersPage() {
                             onClick={() => setDossierActif(dossierActif?.id === d.id ? null : d)}>
                             <td className="px-3 py-3">
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                                  style={{ background: '#2d6a4f' }}>
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                                  style={{ background: '#e8f0eb', color: '#2d6a4f' }}>
                                   {d.clients?.raison_sociale?.[0]?.toUpperCase()}
                                 </div>
                                 <span className="text-sm font-medium text-gray-800 truncate max-w-[100px]">{d.clients?.raison_sociale}</span>
@@ -423,13 +421,13 @@ export default function DossiersPage() {
                 {dossiersFiltres.map(d => {
                   const enRetard = new Date(d.date_echeance) < new Date() && d.statut !== 'televerse_otr'
                   return (
-                    <motion.div key={d.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
+                    <motion.div key={d.id}
+                      className="bg-white rounded-lg shadow-sm border border-gray-100 p-4"
                       style={{ borderLeft: dossierActif?.id === d.id ? '3px solid #2d6a4f' : undefined }}>
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <p className="font-semibold text-gray-800 text-sm">{d.clients?.raison_sociale}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{d.type_impot} — {formatPeriode(d.type_impot, d.periode_mois, d.periode_annee)}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{d.type_impot}, {formatPeriode(d.type_impot, d.periode_mois, d.periode_annee)}</p>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full font-semibold ${STATUT_COULEURS[d.statut]}`}>
                           {STATUT_LABELS[d.statut as keyof typeof STATUT_LABELS]}
@@ -483,13 +481,13 @@ export default function DossiersPage() {
 
         {/* ONGLET RELANCES */}
         {onglet === 'relances' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[500px]">
                 <thead>
-                  <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                  <tr style={{ background: '#f3f6f4', borderBottom: '1px solid #e3e8e5' }}>
                     {['Date', 'Client', 'Canal', 'Aperçu message'].map(h => (
-                      <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-white uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -524,7 +522,7 @@ export default function DossiersPage() {
             {/* Bouton + formulaire création */}
             <div className="flex justify-end">
               <button onClick={() => setShowModeleForm(v => !v)}
-                className="px-4 py-2 rounded-xl text-white text-sm font-medium"
+                className="px-4 py-2 rounded-md text-white text-sm font-medium"
                 style={{ background: '#1a3c2e' }}>
                 {showModeleForm ? 'Annuler' : '+ Nouveau modèle'}
               </button>
@@ -533,16 +531,16 @@ export default function DossiersPage() {
             <AnimatePresence>
               {showModeleForm && (
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+                  className="bg-white rounded-lg border border-gray-100 shadow-sm p-5 space-y-3">
                   <p className="text-sm font-semibold text-gray-700">Nouveau modèle de relance</p>
                   <input
                     value={modeleNom} onChange={e => setModeleNom(e.target.value)}
                     placeholder="Nom du modèle (ex: Relance TVA urgente)"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                   {/* Variables disponibles */}
-                  <div className="rounded-xl border border-dashed p-3" style={{ borderColor: '#2d6a4f', background: '#f0f4f1' }}>
-                    <p className="text-xs font-semibold mb-2" style={{ color: '#1a3c2e' }}>Variables disponibles — cliquez pour insérer</p>
+                  <div className="rounded-md border border-dashed p-3" style={{ borderColor: '#2d6a4f', background: '#f0f4f1' }}>
+                    <p className="text-xs font-semibold mb-2" style={{ color: '#1a3c2e' }}>Variables disponibles (cliquez pour insérer)</p>
                     <div className="flex flex-wrap gap-2">
                       {[
                         { v: '{client}', desc: 'Raison sociale' },
@@ -566,11 +564,11 @@ export default function DossiersPage() {
                     value={modeleContenu} onChange={e => setModeleContenu(e.target.value)}
                     placeholder="Bonjour {client}, votre déclaration {impot} pour la période {periode} arrive à échéance le {echeance}..."
                     rows={6}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                    className="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
                   />
                   <button onClick={creerModele} disabled={savingModele}
-                    className="w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                    className="w-full py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-50"
+                    style={{ background: '#2d6a4f' }}>
                     {savingModele ? 'Enregistrement...' : 'Enregistrer le modèle'}
                   </button>
                 </motion.div>
@@ -579,18 +577,18 @@ export default function DossiersPage() {
 
             {/* Liste modèles */}
             {modeles.length === 0 && !showModeleForm ? (
-              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 text-gray-400 text-sm">
-                Aucun modèle de relance — cliquez sur "+ Nouveau modèle" pour en créer un.
+              <div className="text-center py-16 bg-white rounded-lg border border-gray-100 text-gray-400 text-sm">
+                Aucun modèle de relance. Cliquez sur "+ Nouveau modèle" pour en créer un.
               </div>
             ) : (
               modeles.map(m => (
-                <motion.div key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                <motion.div key={m.id}
+                  className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
                   <div className="flex items-start justify-between mb-2">
                     <p className="font-semibold text-gray-800 text-sm">{m.nom}</p>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { setMessageRelance(m.contenu); setOnglet('dossiers'); toast('Modèle chargé — sélectionnez un dossier', 'success') }}
+                        onClick={() => { setMessageRelance(m.contenu); setOnglet('dossiers'); toast('Modèle chargé, sélectionnez un dossier', 'success') }}
                         className="text-xs px-3 py-1 rounded-lg text-white font-medium"
                         style={{ background: '#2d6a4f' }}>
                         Utiliser

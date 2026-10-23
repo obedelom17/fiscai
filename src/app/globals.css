@@ -1,1 +1,36 @@
 @import "tailwindcss";
+
+:root {
+  --green-950: #0f2318;
+  --green-900: #1a3c2e;
+  --green-600: #2d6a4f;
+  --green-100: #dcebe2;
+  --green-50: #f0f4f1;
+  --gold: #e8a317;
+  --surface: #f0f4f1;
+  --ink: #1f2937;
+  --line: #e3e8e5;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,9 +1,9 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import { usePersistentState, hasCache } from '@/lib/cache'
 import PageHeader from '@/components/PageHeader'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -33,8 +33,8 @@ const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
 export default function CalendrierPage() {
-  const [dossiers, setDossiers] = useState<Dossier[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dossiers, setDossiers] = usePersistentState<Dossier[]>('calendrier.dossiers', [])
+  const [loading, setLoading] = useState(!hasCache('calendrier.dossiers'))
   const [moisActif, setMoisActif] = useState(new Date().getMonth())
   const [anneeActif, setAnneeActif] = useState(new Date().getFullYear())
   const [jourSelectionne, setJourSelectionne] = useState<number | null>(null)
@@ -102,8 +102,7 @@ export default function CalendrierPage() {
       <PageHeader
         titre="Calendrier Fiscal"
         sousTitre="Vue mensuelle des échéances OTR"
-        imageUrl="https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=1200&q=80"
-      />
+        />
 
       <div className="px-4 md:px-8 py-6 md:py-8">
         {/* Stats mois */}
@@ -113,27 +112,26 @@ export default function CalendrierPage() {
             { label: 'En attente', value: statsM.en_attente, color: '#d97706' },
             { label: 'Traités', value: statsM.traites, color: '#2d6a4f' },
           ].map((s, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-              className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-500 uppercase font-medium">{s.label}</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+            <motion.div key={i}
+              className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+              <p className="text-xs text-gray-500 font-medium">{s.label}</p>
+              <p className="text-2xl font-semibold mt-1" style={{ color: s.color }}>{s.value}</p>
             </motion.div>
           ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Calendrier */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
             {/* Navigation */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100"
-              style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-              <button onClick={moisPrecedent} className="text-white/70 hover:text-white p-1 rounded-lg transition-all">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <button onClick={moisPrecedent} className="text-gray-800/70 hover:text-gray-800 p-1 rounded-lg transition-all">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
               <div className="text-center">
-                <h2 className="text-white font-bold text-lg">{MOIS_NOMS[moisActif]} {anneeActif}</h2>
+                <h2 className="text-white font-semibold text-lg">{MOIS_NOMS[moisActif]} {anneeActif}</h2>
               </div>
               <button onClick={moisSuivant} className="text-white/70 hover:text-white p-1 rounded-lg transition-all">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,7 +156,7 @@ export default function CalendrierPage() {
             {/* Jours semaine */}
             <div className="grid grid-cols-7 border-b border-gray-100">
               {JOURS.map(j => (
-                <div key={j} className="px-2 py-2 text-center text-xs font-semibold text-gray-400 uppercase">
+                <div key={j} className="px-2 py-2 text-center text-xs font-semibold text-gray-400">
                   {j}
                 </div>
               ))}
@@ -182,7 +180,6 @@ export default function CalendrierPage() {
                   <motion.div
                     key={jour}
                     onClick={() => setJourSelectionne(selectionne ? null : jour)}
-                    whileHover={{ background: '#f0f9f4' }}
                     className="min-h-[70px] border-b border-r border-gray-100 p-1.5 cursor-pointer transition-colors"
                     style={{ background: selectionne ? '#f0f9f4' : 'white' }}>
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold mb-1 ${auJourd ? 'text-white' : 'text-gray-700'}`}
@@ -212,8 +209,8 @@ export default function CalendrierPage() {
           {/* Panel latéral */}
           <div className="space-y-4">
             {/* Légende */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Légende</h3>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Légende</h3>
               <div className="space-y-2">
                 {Object.entries(STATUT_COULEURS).map(([key, val]) => (
                   <div key={key} className="flex items-center gap-2">
@@ -231,13 +228,12 @@ export default function CalendrierPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-100"
-                    style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-                    <h3 className="text-white font-semibold text-sm">
+                  className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <h3 className="text-gray-800 font-semibold text-sm">
                       {jourSelectionne} {MOIS_NOMS[moisActif]} {anneeActif}
                     </h3>
-                    <p className="text-green-300 text-xs mt-0.5">{dossiersJourSelectionne.length} échéance(s)</p>
+                    <p className="text-gray-400 text-xs mt-0.5">{dossiersJourSelectionne.length} échéance(s)</p>
                   </div>
                   <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
                     {dossiersJourSelectionne.length === 0 ? (
@@ -245,7 +241,7 @@ export default function CalendrierPage() {
                     ) : dossiersJourSelectionne.map(d => {
                       const couleur = STATUT_COULEURS[d.statut]
                       return (
-                        <div key={d.id} className="p-3 rounded-xl border border-gray-100">
+                        <div key={d.id} className="p-3 rounded-md border border-gray-100">
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="text-sm font-semibold text-gray-800">{d.clients?.raison_sociale}</p>
@@ -265,10 +261,9 @@ export default function CalendrierPage() {
             </AnimatePresence>
 
             {/* Prochaines échéances */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100"
-                style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-                <h3 className="text-white font-semibold text-sm">Prochaines échéances</h3>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100">
+                <h3 className="text-gray-800 font-semibold text-sm">Prochaines échéances</h3>
               </div>
               <div className="p-3 space-y-2 max-h-64 overflow-y-auto">
                 {dossiers
@@ -278,14 +273,14 @@ export default function CalendrierPage() {
                     const ech = new Date(d.date_echeance)
                     const diff = Math.ceil((ech.getTime() - aujourd.getTime()) / (1000 * 60 * 60 * 24))
                     return (
-                      <div key={d.id} className="flex items-center justify-between p-2.5 rounded-xl"
+                      <div key={d.id} className="flex items-center justify-between p-2.5 rounded-md"
                         style={{ background: diff <= 3 ? '#fff8f8' : diff <= 7 ? '#fffbeb' : '#f8fafb' }}>
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-gray-800 truncate">{d.clients?.raison_sociale}</p>
                           <p className="text-xs text-gray-500">{d.type_impot}</p>
                         </div>
                         <div className="text-right flex-shrink-0 ml-2">
-                          <p className="text-xs font-bold" style={{ color: diff <= 3 ? '#dc2626' : diff <= 7 ? '#d97706' : '#2d6a4f' }}>
+                          <p className="text-xs font-semibold" style={{ color: diff <= 3 ? '#dc2626' : diff <= 7 ? '#d97706' : '#2d6a4f' }}>
                             J-{diff}
                           </p>
                           <p className="text-xs text-gray-400">{ech.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</p>

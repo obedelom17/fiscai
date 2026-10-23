@@ -1,5 +1,5 @@
 # FiscAI
-Application web de gestion des dossiers fiscaux pour le cabinet Experts Afrique Conseils.
+Application web de gestion des dossiers fiscaux destinée aux cabinets de conseil fiscal au Togo.
 
 **Production** : https://fiscai-eac.vercel.app
 
@@ -79,4 +79,12 @@ Il faut aussi configurer les variables d'environnement dans Vercel.
 ## Auteur :
 
 **ELOM Obed** - Étudiant en informatique, IAI-TOGO  
-Stagiaire chez Experts Afrique Conseils, Lomé, Togo
+Lomé, Togo
+
+## Identité visuelle
+
+Le logo unique de FiscAI est défini dans `src/components/Logo.tsx` (composant `LogoMark` / `Logo`) et dans `public/logo.svg`. Les favicons et icônes PWA sont générés à partir de la même géométrie. Ne pas recréer de variante du logo.
+
+## Navigation
+
+Toutes les pages connectées (`dashboard`, `admin`, `parametres`) sont dans le groupe de routes `src/app/(app)` et partagent un seul layout : la sidebar reste montée entre deux pages. Les données déjà chargées sont conservées en mémoire (`src/lib/cache.ts`) et rafraîchies en arrière-plan.

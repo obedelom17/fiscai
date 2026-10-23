@@ -103,20 +103,20 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
   ] as const
 
   return (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <motion.div
+      className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
 
       {/* En-tête */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between"
-        style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+        style={{ background: '#1a3c2e' }}>
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-white font-bold text-sm">{dossier.clients?.raison_sociale}</h3>
+            <h3 className="text-white font-semibold text-sm">{dossier.clients?.raison_sociale}</h3>
             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${STATUT_COULEURS[dossier.statut]}`}>
               {STATUT_LABELS[dossier.statut as keyof typeof STATUT_LABELS]}
             </span>
           </div>
-          <p className="text-green-300 text-xs">{dossier.type_impot} — {formatPeriode(dossier.type_impot, dossier.periode_mois, dossier.periode_annee)}</p>
+          <p className="text-green-300 text-xs">{dossier.type_impot}, {formatPeriode(dossier.type_impot, dossier.periode_mois, dossier.periode_annee)}</p>
           {dossier.date_echeance && (
             <p className="text-xs mt-0.5" style={{ color: new Date(dossier.date_echeance) < new Date() ? '#fca5a5' : 'rgba(255,255,255,0.5)' }}>
               Échéance : {new Date(dossier.date_echeance).toLocaleDateString('fr-FR')}
@@ -145,13 +145,13 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
           <div className="flex flex-col gap-6">
             {/* Upload */}
             <div>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Documents</h4>
+              <h4 className="text-xs font-semibold text-gray-500 mb-3">Documents</h4>
               <div
                 onDrop={e => { e.preventDefault(); setDragging(false); uploadFichiers(e.dataTransfer.files) }}
                 onDragOver={e => { e.preventDefault(); setDragging(true) }}
                 onDragLeave={() => setDragging(false)}
                 onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors"
+                className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer transition-colors"
                 style={{ borderColor: dragging ? '#2d6a4f' : '#d1fae5', background: dragging ? '#f0fdf4' : '#fafffe' }}>
                 <input ref={fileRef} type="file" multiple accept=".pdf" className="hidden" onChange={e => uploadFichiers(e.target.files)} />
                 <p className="text-sm text-gray-500">{uploading ? 'Upload en cours...' : 'Glisser-déposer ou cliquer'}</p>
@@ -170,13 +170,13 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
 
             {/* Relance IA */}
             <div>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Relance IA</h4>
+              <h4 className="text-xs font-semibold text-gray-500 mb-3">Relance IA</h4>
 
               {/* Canal */}
               <div className="flex gap-2 mb-3">
                 {(['email', 'whatsapp'] as const).map(c => (
                   <button key={c} onClick={() => setCanalRelance(c)}
-                    className="flex-1 py-2 rounded-xl text-xs font-medium border transition-all"
+                    className="flex-1 py-2 rounded-md text-xs font-medium border transition-all"
                     style={canalRelance === c
                       ? { background: '#1a3c2e', color: '#fff', border: 'none' }
                       : { background: '#fff', color: '#4a7c5e', borderColor: '#d1fae5' }}>
@@ -189,7 +189,7 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
               {modeles.length > 0 && (
                 <div className="mb-3">
                   <button onClick={() => setShowModeles(v => !v)}
-                    className="w-full py-2 rounded-xl text-xs font-medium border transition-all"
+                    className="w-full py-2 rounded-md text-xs font-medium border transition-all"
                     style={{ background: showModeles ? '#f0f4f1' : '#fff', color: '#2d6a4f', borderColor: '#d1fae5' }}>
                     {showModeles ? 'Masquer les modèles' : `Utiliser un modèle (${modeles.length} disponible${modeles.length > 1 ? 's' : ''})`}
                   </button>
@@ -198,7 +198,7 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                         className="mt-2 space-y-1.5 overflow-hidden">
                         {modeles.map(m => (
-                          <div key={m.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-gray-100 bg-gray-50">
+                          <div key={m.id} className="flex items-center justify-between gap-2 p-2.5 rounded-md border border-gray-100 bg-gray-50">
                             <div className="min-w-0">
                               <p className="text-xs font-semibold text-gray-700 truncate">{m.nom}</p>
                               <p className="text-xs text-gray-400 truncate">{m.contenu?.slice(0, 60)}...</p>
@@ -219,18 +219,18 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
               {/* Textarea */}
               <textarea value={messageRelance} onChange={e => setMessageRelance(e.target.value)} rows={5}
                 placeholder="Cliquez sur Générer ou choisissez un modèle..."
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 mb-3" />
+                className="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 mb-3" />
 
               {/* Boutons action */}
               <div className="flex gap-2">
                 <button onClick={onGenererRelance} disabled={generatingRelance}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                  className="flex-1 py-2.5 rounded-md text-sm font-medium text-white disabled:opacity-50"
+                  style={{ background: '#2d6a4f' }}>
                   {generatingRelance ? 'Génération...' : 'Générer IA'}
                 </button>
                 <button onClick={onSendRelance} disabled={sendingRelance || !messageRelance}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
+                  className="flex-1 py-2.5 rounded-md text-sm font-medium text-white disabled:opacity-50"
+                  style={{ background: '#e8a317' }}>
                   {sendingRelance ? 'Envoi...' : 'Envoyer'}
                 </button>
               </div>
@@ -238,7 +238,7 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
               {/* Historique relances du dossier */}
               {relancesOnglet.length > 0 && (
                 <div className="mt-4">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Historique relances</p>
+                  <p className="text-xs font-semibold text-gray-400 mb-2">Historique relances</p>
                   <div className="space-y-1.5">
                     {relancesOnglet.map(r => (
                       <div key={r.id} className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5">

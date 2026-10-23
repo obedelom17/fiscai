@@ -1,10 +1,10 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
 
 import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import { usePersistentState, hasCache } from '@/lib/cache'
 import { motion } from 'framer-motion'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
@@ -28,9 +28,9 @@ type Relance = {
 }
 
 export default function StatistiquesPage() {
-  const [dossiers, setDossiers] = useState<Dossier[]>([])
-  const [relances, setRelances] = useState<Relance[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dossiers, setDossiers] = usePersistentState<Dossier[]>('stats.dossiers', [])
+  const [relances, setRelances] = usePersistentState<Relance[]>('stats.relances', [])
+  const [loading, setLoading] = useState(!hasCache('stats.dossiers'))
   const supabase = createClient()
 
   useEffect(() => { charger() }, [])
@@ -136,9 +136,8 @@ export default function StatistiquesPage() {
 
       <PageHeader
   titre="Tableau de bord"
-  sousTitre="Vue d'ensemble de la conformité fiscale — Experts Afrique Conseils"
-  imageUrl="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80"
-/>
+  sousTitre="Vue d'ensemble de la conformité fiscale"
+  />
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
@@ -151,13 +150,9 @@ export default function StatistiquesPage() {
             { label: 'Alertes OTR', value: alertes.length, color: '#d97706' },
           ].map((kpi, i) => (
             <motion.div key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
-              whileHover={{ y: -3, boxShadow: '0 8px 25px rgba(0,0,0,0.08)' }}
-              className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 cursor-default">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-              <p className="text-3xl md:text-4xl font-bold mt-2" style={{ color: kpi.color }}>{kpi.value}</p>
+              className="bg-white rounded-lg p-5 shadow-sm border border-gray-100 cursor-default">
+              <p className="text-xs font-semibold text-gray-500">{kpi.label}</p>
+              <p className="text-3xl md:text-4xl font-semibold mt-2" style={{ color: kpi.color }}>{kpi.value}</p>
               <div className="mt-3 w-full h-1.5 rounded-full" style={{ background: '#f3f4f6' }}>
                 <motion.div
                   initial={{ width: 0 }}
@@ -172,17 +167,11 @@ export default function StatistiquesPage() {
 
         {/* Taux conformité */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+          className="bg-white rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-800">Taux de conformité global</h2>
+            <h2 className="font-semibold text-gray-800">Taux de conformité global</h2>
             <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              className="text-3xl font-black"
+              className="text-3xl font-semibold"
               style={{ color: tauxConformite >= 70 ? '#2d6a4f' : '#dc2626' }}>
               {tauxConformite}%
             </motion.span>
@@ -195,8 +184,8 @@ export default function StatistiquesPage() {
               className="h-4 rounded-full"
               style={{
                 background: tauxConformite >= 70
-                  ? 'linear-gradient(90deg, #2d6a4f, #4ade80)'
-                  : 'linear-gradient(90deg, #dc2626, #f87171)'
+                  ? '#2d6a4f'
+                  : '#dc2626'
               }} />
           </div>
           <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -208,11 +197,8 @@ export default function StatistiquesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
           {/* Conformité anneau */}
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="font-bold text-gray-800 mb-4">Conformité globale du cabinet</h2>
+            className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+            <h2 className="font-semibold text-gray-800 mb-4">Conformité globale du cabinet</h2>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie data={dataConformite} cx="50%" cy="50%" innerRadius={65} outerRadius={95}
@@ -227,11 +213,8 @@ export default function StatistiquesPage() {
 
           {/* Par type */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="font-bold text-gray-800 mb-4">Avancement par type d'impôt</h2>
+            className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+            <h2 className="font-semibold text-gray-800 mb-4">Avancement par type d'impôt</h2>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={dataTypes}>
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
@@ -249,11 +232,8 @@ export default function StatistiquesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
           {/* Par collaborateur */}
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="font-bold text-gray-800 mb-4">Dossiers en attente par collaborateur</h2>
+            className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+            <h2 className="font-semibold text-gray-800 mb-4">Dossiers en attente par collaborateur</h2>
             {dataCollab.length === 0 ? (
               <div className="flex items-center justify-center h-40">
                 <p className="text-gray-400 text-sm">Aucun dossier en attente</p>
@@ -272,20 +252,14 @@ export default function StatistiquesPage() {
 
           {/* Taux complétion */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="font-bold text-gray-800 mb-6">Taux de complétion par impôt</h2>
+            className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+            <h2 className="font-semibold text-gray-800 mb-6">Taux de complétion par impôt</h2>
             <div className="space-y-5">
               {dataCompletion.map((d, i) => (
-                <motion.div key={d.name}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.7 + i * 0.1 }}>
+                <motion.div key={d.name}>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="font-medium text-gray-700">{d.name}</span>
-                    <span className="font-bold" style={{ color: d.taux >= 70 ? '#2d6a4f' : '#d97706' }}>{d.taux}%</span>
+                    <span className="font-semibold" style={{ color: d.taux >= 70 ? '#2d6a4f' : '#d97706' }}>{d.taux}%</span>
                   </div>
                   <div className="w-full h-2.5 rounded-full" style={{ background: '#f3f4f6' }}>
                     <motion.div
@@ -295,8 +269,8 @@ export default function StatistiquesPage() {
                       className="h-2.5 rounded-full"
                       style={{
                         background: d.taux >= 70
-                          ? 'linear-gradient(90deg, #2d6a4f, #4ade80)'
-                          : 'linear-gradient(90deg, #e8a317, #fcd34d)'
+                          ? '#2d6a4f'
+                          : '#e8a317'
                       }} />
                   </div>
                 </motion.div>
@@ -307,18 +281,15 @@ export default function StatistiquesPage() {
 
         {/* Stat 4 : Indice de réactivité */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+          className="bg-white rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="font-bold text-gray-800">Indice de réactivité des clients</h2>
+              <h2 className="font-semibold text-gray-800">Indice de réactivité des clients</h2>
               <p className="text-gray-400 text-xs mt-0.5">Délai moyen entre relance et réception du document</p>
             </div>
             {delaiMoyenGlobal !== null && (
               <div className="text-right">
-                <p className="text-3xl font-black"
+                <p className="text-3xl font-semibold"
                   style={{ color: delaiMoyenGlobal <= 3 ? '#2d6a4f' : delaiMoyenGlobal <= 7 ? '#d97706' : '#dc2626' }}>
                   {delaiMoyenGlobal}j
                 </p>
@@ -328,23 +299,20 @@ export default function StatistiquesPage() {
           </div>
 
           {dataReactivite.length === 0 ? (
-            <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: '#f0f9f4' }}>
+            <div className="flex items-center gap-3 p-4 rounded-md" style={{ background: '#f0f9f4' }}>
               <div className="w-2 h-2 rounded-full" style={{ background: '#2d6a4f' }} />
               <p className="text-sm text-gray-500">
-                Aucune donnée disponible — les délais s'afficheront après envoi de relances et réception de documents
+                Aucune donnée disponible. Les délais s'afficheront après envoi de relances et réception de documents
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               {dataReactivite.map((c, i) => (
                 <motion.div key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.08 }}
-                  className="flex items-center gap-4 p-3 rounded-xl"
+                  className="flex items-center gap-4 p-3 rounded-md"
                   style={{ background: '#f8fafb' }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                    style={{ background: '#e8f0eb', color: '#2d6a4f' }}>
                     {c.nom[0]}
                   </div>
                   <div className="flex-1">
@@ -357,15 +325,15 @@ export default function StatistiquesPage() {
                         className="h-2 rounded-full"
                         style={{
                           background: c.delai <= 3
-                            ? 'linear-gradient(90deg, #2d6a4f, #4ade80)'
+                            ? '#2d6a4f'
                             : c.delai <= 7
-                            ? 'linear-gradient(90deg, #e8a317, #fcd34d)'
-                            : 'linear-gradient(90deg, #dc2626, #f87171)'
+                            ? '#e8a317'
+                            : '#dc2626'
                         }} />
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="text-sm font-bold"
+                    <span className="text-sm font-semibold"
                       style={{ color: c.delai <= 3 ? '#2d6a4f' : c.delai <= 7 ? '#d97706' : '#dc2626' }}>
                       {c.delai} jour{c.delai > 1 ? 's' : ''}
                     </span>
@@ -392,12 +360,9 @@ export default function StatistiquesPage() {
 
         {/* Alertes OTR */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-bold text-gray-800">Alertes OTR — Échéances critiques</h2>
+            <h2 className="font-semibold text-gray-800">Alertes OTR et échéances critiques</h2>
             {alertes.length > 0 && (
               <motion.span
                 animate={{ scale: [1, 1.05, 1] }}
@@ -408,28 +373,25 @@ export default function StatistiquesPage() {
             )}
           </div>
           {alertes.length === 0 ? (
-            <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: '#f0f9f4' }}>
+            <div className="flex items-center gap-3 p-4 rounded-md" style={{ background: '#f0f9f4' }}>
               <div className="w-2 h-2 rounded-full" style={{ background: '#2d6a4f' }} />
               <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>
                 Aucune échéance critique dans les 5 prochains jours
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-gray-100">
+            <div className="overflow-x-auto rounded-md border border-gray-100">
               <table className="w-full min-w-[400px]">
                 <thead>
                   <tr style={{ background: '#f8fafb' }}>
                     {['Client', "Type d'impôt", 'Échéance', 'Statut'].map(h => (
-                      <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {alertes.map((d, i) => (
                     <motion.tr key={d.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
                       className="border-t border-gray-50 hover:bg-red-50 transition-colors">
                       <td className="px-3 py-3 text-sm font-medium text-gray-800 max-w-[120px] truncate">{d.clients?.raison_sociale}</td>
                       <td className="px-3 py-3">
@@ -454,11 +416,11 @@ export default function StatistiquesPage() {
           )}
         </motion.div>
         {/* Récap Montants */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-5">
-          <div className="px-6 py-4 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-            <h2 className="font-bold text-white">Récapitulatif des montants</h2>
-            <p className="text-green-300 text-xs mt-0.5">Montants d'impôts — tous les dossiers</p>
+        <motion.div
+          className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mt-5">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-800">Récapitulatif des montants</h2>
+            <p className="text-gray-400 text-xs mt-0.5">Montants d'impôts, tous les dossiers</p>
           </div>
           <div className="p-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -471,9 +433,9 @@ export default function StatistiquesPage() {
                   { label: 'Dossiers avec montant', value: avecMontant.toString(), color: '#2563eb' },
                   { label: 'Dossiers sans montant', value: sansMontant.toString(), color: '#d97706' },
                 ].map(k => (
-                  <div key={k.label} className="rounded-xl p-4 border border-gray-100 bg-gray-50">
+                  <div key={k.label} className="rounded-md p-4 border border-gray-100 bg-gray-50">
                     <p className="text-xs text-gray-400 mb-1">{k.label}</p>
-                    <p className="text-xl font-bold" style={{ color: k.color }}>{k.value}</p>
+                    <p className="text-xl font-semibold" style={{ color: k.color }}>{k.value}</p>
                   </div>
                 ))
               })()}

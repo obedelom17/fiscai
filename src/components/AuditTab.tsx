@@ -12,7 +12,7 @@ type AuditLog = {
 
 export default function AuditTab({ logs }: { logs: AuditLog[] }) {
   if (logs.length === 0) return (
-    <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+    <div className="text-center py-16 bg-white rounded-lg border border-gray-100">
       <p className="text-gray-400 text-sm">Aucun log d'audit</p>
     </div>
   )
@@ -23,13 +23,13 @@ export default function AuditTab({ logs }: { logs: AuditLog[] }) {
   return (
     <>
       {/* Desktop */}
-      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead>
-              <tr style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+              <tr style={{ background: '#f3f6f4', borderBottom: '1px solid #e3e8e5' }}>
                 {['Date', 'Collaborateur', 'Action', 'Détails'].map(h => (
-                  <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-white uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  <th key={h} className="text-left px-5 py-4 text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -55,8 +55,8 @@ export default function AuditTab({ logs }: { logs: AuditLog[] }) {
       {/* Mobile */}
       <div className="md:hidden space-y-2">
         {logs.map((l, i) => (
-          <motion.div key={l.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-            className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
+          <motion.div key={l.id}
+            className="bg-white rounded-md border border-gray-100 p-3 shadow-sm">
             <div className="flex items-start justify-between gap-2 mb-2">
               <span className="text-xs font-mono px-2 py-0.5 rounded-lg flex-shrink-0"
                 style={{ background: '#f0f4f1', color: '#2d6a4f' }}>

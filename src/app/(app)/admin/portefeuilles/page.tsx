@@ -1,19 +1,19 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
 
 import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import { usePersistentState, hasCache } from '@/lib/cache'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type Collaborateur = { id: string; nom: string; prenom: string; email: string; role: string; avatar_url?: string | null }
 type Client = { id: string; raison_sociale: string; nif: string; secteur_activite: string; collaborateur_id: string | null }
 
 export default function PortefeuillesPage() {
-  const [collaborateurs, setCollaborateurs] = useState<Collaborateur[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [loading, setLoading] = useState(true)
+  const [collaborateurs, setCollaborateurs] = usePersistentState<Collaborateur[]>('portefeuilles.collabs', [])
+  const [clients, setClients] = usePersistentState<Client[]>('portefeuilles.clients', [])
+  const [loading, setLoading] = useState(!hasCache('portefeuilles.collabs'))
   const [confirmSupprimer, setConfirmSupprimer] = useState<string | null>(null)
   const [supprimant, setSupprimant] = useState(false)
   const supabase = createClient()
@@ -77,8 +77,7 @@ export default function PortefeuillesPage() {
       <PageHeader
         titre="Gestion des Portefeuilles"
         sousTitre="Attribution des clients aux collaborateurs du cabinet"
-        imageUrl="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&q=80"
-      />
+        />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
 
@@ -90,10 +89,9 @@ export default function PortefeuillesPage() {
             { label: 'Non attribués', value: clients.filter(c => !c.collaborateur_id).length, color: '#d97706' },
           ].map((s, i) => (
             <motion.div key={i}
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-              className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 sm:block">
-              <p className="text-3xl font-bold sm:mt-1" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-xs text-gray-500 uppercase font-semibold tracking-wide sm:mt-0">{s.label}</p>
+              className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 flex items-center gap-4 sm:block">
+              <p className="text-3xl font-semibold sm:mt-1" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-xs text-gray-500 font-semibold sm:mt-0">{s.label}</p>
             </motion.div>
           ))}
         </div>
@@ -102,12 +100,11 @@ export default function PortefeuillesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
           {/* Collaborateurs */}
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100"
-              style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-              <h2 className="font-bold text-white text-sm">Collaborateurs ({collaborateurs.length})</h2>
-              <p className="text-green-300 text-xs mt-0.5">Gestion des rôles et accès</p>
+          <motion.div
+            className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-800 text-sm">Collaborateurs ({collaborateurs.length})</h2>
+              <p className="text-gray-400 text-xs mt-0.5">Gestion des rôles et accès</p>
             </div>
             <div className="p-3 space-y-2 max-h-[70vh] overflow-y-auto">
               <AnimatePresence>
@@ -115,12 +112,11 @@ export default function PortefeuillesPage() {
                   <p className="text-gray-400 text-sm text-center py-8">Aucun collaborateur enregistré</p>
                 ) : collaborateurs.map((c, i) => (
                   <motion.div key={c.id}
-                    initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
-                    className="flex items-start gap-3 p-3 rounded-xl border border-gray-100"
+                    className="flex items-start gap-3 p-3 rounded-md border border-gray-100"
                     style={{ background: '#fafffe' }}>
                     {/* Avatar */}
-                    <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ background: c.avatar_url ? 'transparent' : 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                    <div className="w-9 h-9 rounded-md overflow-hidden flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                      style={{ background: c.avatar_url ? 'transparent' : '#2d6a4f' }}>
                       {c.avatar_url ? <img src={c.avatar_url} alt="" className="w-full h-full object-cover" /> : <>{c.prenom[0]}{c.nom[0]}</>}
                     </div>
                     {/* Infos */}
@@ -154,7 +150,7 @@ export default function PortefeuillesPage() {
                           <button
                             onClick={() => {
                               if (c.role === 'admin' && collaborateurs.filter(x => x.role === 'admin').length <= 1) {
-                                alert('Impossible — dernier administrateur'); return
+                                alert('Impossible : dernier administrateur'); return
                               }
                               setConfirmSupprimer(c.id)
                             }}
@@ -171,12 +167,11 @@ export default function PortefeuillesPage() {
           </motion.div>
 
           {/* Attribution clients */}
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100"
-              style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-              <h2 className="font-bold text-white text-sm">Attribution des clients ({clients.length})</h2>
-              <p className="text-green-300 text-xs mt-0.5">Assignez chaque client à un collaborateur</p>
+          <motion.div
+            className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-800 text-sm">Attribution des clients ({clients.length})</h2>
+              <p className="text-gray-400 text-xs mt-0.5">Assignez chaque client à un collaborateur</p>
             </div>
             <div className="p-3 space-y-2 max-h-[70vh] overflow-y-auto">
               <AnimatePresence>
@@ -184,11 +179,10 @@ export default function PortefeuillesPage() {
                   <p className="text-gray-400 text-sm text-center py-8">Aucun client enregistré</p>
                 ) : clients.map((cl, i) => (
                   <motion.div key={cl.id}
-                    initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-100"
+                    className="flex items-center gap-3 p-3 rounded-md border border-gray-100"
                     style={{ background: cl.collaborateur_id ? '#fafffe' : '#fffbeb' }}>
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ background: cl.collaborateur_id ? 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' : '#e8a317' }}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                      style={{ background: cl.collaborateur_id ? '#e8f0eb' : '#fdf1d6', color: cl.collaborateur_id ? '#2d6a4f' : '#92400e' }}>
                       {cl.raison_sociale[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

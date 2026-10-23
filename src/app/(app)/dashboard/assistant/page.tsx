@@ -1,6 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
 
 import PageHeader from '@/components/PageHeader'
 import { useState, useEffect, useRef } from 'react'
@@ -13,7 +12,7 @@ type Message = { role: 'user' | 'assistant'; content: string }
 
 const MSG_INITIAL: Message = {
   role: 'assistant',
-  content: 'Bonjour. Je suis FiscAl, votre assistant fiscal intelligent. Posez-moi vos questions sur vos dossiers clients, échéances OTR ou obligations fiscales togolaises.'
+  content: 'Bonjour. Je suis FiscAI, votre assistant fiscal intelligent. Posez-moi vos questions sur vos dossiers clients, échéances OTR ou obligations fiscales togolaises.'
 }
 
 export default function AssistantPage() {
@@ -154,11 +153,10 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
       <PageHeader
         titre="Assistant IA"
         sousTitre="Interrogez vos données fiscales en langage naturel"
-        imageUrl="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80"
         bouton={
           messages.length > 1 ? (
             <button onClick={reinitialiser}
-              className="px-3 py-1.5 rounded-xl text-white text-xs font-medium"
+              className="px-3 py-1.5 rounded-md text-white text-xs font-medium"
               style={{ background: '#e8a317', color: '#1a3c2e', fontWeight: 600 }}>
               Nouvelle conversation
             </button>
@@ -169,10 +167,10 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
       <div className="flex-1 flex flex-col overflow-hidden px-4 md:px-8 py-4 md:py-6 gap-4">
 
         {messages.length > 2 && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs flex-shrink-0"
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs flex-shrink-0"
             style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            Historique actif — {Math.floor((messages.length - 1) / 2)} échange(s) en mémoire
+            Historique actif : {Math.floor((messages.length - 1) / 2)} échange(s) en mémoire
             {saving && <span className="ml-2 text-gray-400">Sauvegarde...</span>}
           </div>
         )}
@@ -186,13 +184,8 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
               className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 flex-shrink-0">
               {suggestionsList.map((s, i) => (
                 <motion.button key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
                   onClick={() => setInput(s)}
-                  whileHover={{ y: -2, boxShadow: '0 6px 20px rgba(45,106,79,0.12)', borderColor: '#2d6a4f' }}
-                  whileTap={{ scale: 0.98 }}
-                  className="text-left p-4 bg-white rounded-2xl border border-gray-100 shadow-sm text-sm text-gray-600 transition-all">
+                  className="text-left p-4 bg-white rounded-lg border border-gray-100 shadow-sm text-sm text-gray-600 transition-all">
                   <div className="w-6 h-6 rounded-lg mb-2 flex items-center justify-center"
                     style={{ background: '#f0f4f1' }}>
                     <svg className="w-3 h-3" fill="none" stroke="#2d6a4f" viewBox="0 0 24 24">
@@ -206,24 +199,21 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           )}
         </AnimatePresence>
 
-        <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-y-auto space-y-4 min-h-0">
+        <div className="flex-1 bg-white rounded-lg border border-gray-100 shadow-sm p-6 overflow-y-auto space-y-4 min-h-0">
           <AnimatePresence initial={false}>
             {messages.map((msg, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, y: 15, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3 }}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-3`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                    <span className="text-white text-xs font-bold">F</span>
+                  <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 mt-1"
+                    style={{ background: '#2d6a4f' }}>
+                    <span className="text-white text-xs font-semibold">F</span>
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${msg.role === 'user' ? 'rounded-br-sm' : 'rounded-bl-sm border border-gray-100'}`}
+                  className={`max-w-[80%] rounded-lg px-4 py-3 text-sm leading-relaxed shadow-sm ${msg.role === 'user' ? 'rounded-br-sm' : 'rounded-bl-sm border border-gray-100'}`}
                   style={msg.role === 'user'
-                    ? { background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)', color: 'white' }
+                    ? { background: '#2d6a4f', color: 'white' }
                     : { background: '#f8fafb', color: '#374151' }}>
                   {msg.role === 'user' ? (
                     msg.content
@@ -269,7 +259,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
                   )}
                 </div>
                 {msg.role === 'user' && (
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1"
+                  <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 mt-1"
                     style={{ background: '#f0f4f1' }}>
                     <svg className="w-4 h-4" fill="none" stroke="#2d6a4f" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -281,12 +271,12 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           </AnimatePresence>
 
           {loading && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start gap-3">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md"
-                style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
-                <span className="text-white text-xs font-bold">F</span>
+            <motion.div className="flex justify-start gap-3">
+              <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
+                style={{ background: '#2d6a4f' }}>
+                <span className="text-white text-xs font-semibold">F</span>
               </div>
-              <div className="bg-gray-50 border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
+              <div className="bg-gray-50 border border-gray-100 rounded-lg rounded-bl-sm px-4 py-3">
                 <div className="flex gap-1.5 items-center">
                   {[0, 150, 300].map(delay => (
                     <motion.div key={delay}
@@ -302,15 +292,14 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
           <div ref={bottomRef} />
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 flex items-center gap-3 flex-shrink-0">
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-2 flex items-center gap-3 flex-shrink-0">
           <input value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && envoyer()}
             placeholder="Ex: Quels clients ont des dossiers TVA en attente ?"
             className="flex-1 px-4 py-2.5 text-sm outline-none text-gray-700 placeholder-gray-400" />
           <motion.button onClick={envoyer} disabled={loading || !input.trim()}
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            className="px-5 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-40 flex items-center gap-2"
-            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+            className="px-5 py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-40 flex items-center gap-2"
+            style={{ background: '#2d6a4f' }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>

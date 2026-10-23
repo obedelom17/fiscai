@@ -1,6 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
 
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
@@ -171,36 +170,31 @@ export default function ParametresPage() {
       <PageHeader
         titre="Paramètres"
         sousTitre="Gérez votre profil et vos informations de connexion"
-        imageUrl="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80"
-      />
+        />
 
       <div className="px-4 md:px-8 py-6 md:py-8 space-y-6">
 
         {/* Photo de profil */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100"
-            style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-            <h2 className="font-bold text-white">Photo de profil</h2>
-            <p className="text-green-300 text-xs mt-0.5">Votre photo visible dans la sidebar</p>
+          className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-800">Photo de profil</h2>
+            <p className="text-gray-400 text-xs mt-0.5">Votre photo visible dans la sidebar</p>
           </div>
           <div className="p-5 md:p-6 flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6">
             {/* Avatar actuel */}
             <div className="relative flex-shrink-0">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="Avatar"
-                  className="w-24 h-24 rounded-2xl object-cover shadow-md" />
+                  className="w-24 h-24 rounded-lg object-cover" />
               ) : (
-                <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-md"
-                  style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                <div className="w-24 h-24 rounded-lg flex items-center justify-center text-white text-3xl font-semibold"
+                  style={{ background: '#2d6a4f' }}>
                   {prenom?.[0]}{nom?.[0]}
                 </div>
               )}
               {uploadingAvatar && (
-                <div className="absolute inset-0 rounded-2xl flex items-center justify-center"
+                <div className="absolute inset-0 rounded-lg flex items-center justify-center"
                   style={{ background: 'rgba(0,0,0,0.5)' }}>
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                     className="w-6 h-6 rounded-full border-2 border-white border-t-transparent" />
@@ -217,9 +211,8 @@ export default function ParametresPage() {
               <motion.button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploadingAvatar}
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                className="px-5 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50 shadow-md"
-                style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                className="px-5 py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-50"
+                style={{ background: '#2d6a4f' }}>
                 {uploadingAvatar ? 'Upload en cours...' : 'Changer la photo'}
               </motion.button>
               {avatarUrl && (
@@ -230,8 +223,7 @@ export default function ParametresPage() {
                     await supabase.from('collaborateurs').update({ avatar_url: null }).eq('id', user.id)
                     setAvatarUrl(null)
                   }}
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="ml-3 px-5 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
+                  className="ml-3 px-5 py-2.5 rounded-md text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50">
                   Supprimer
                 </motion.button>
               )}
@@ -241,37 +233,32 @@ export default function ParametresPage() {
 
         {/* Profil */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100"
-            style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-            <h2 className="font-bold text-white">Informations personnelles</h2>
-            <p className="text-green-300 text-xs mt-0.5">Votre nom affiché dans l'application</p>
+          className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-800">Informations personnelles</h2>
+            <p className="text-gray-400 text-xs mt-0.5">Votre nom affiché dans l'application</p>
           </div>
           <div className="p-5 md:p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Prénom</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Prénom</label>
                 <input value={prenom} onChange={e => setPrenom(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  className="w-full border border-gray-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Nom</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nom</label>
                 <input value={nom} onChange={e => setNom(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  className="w-full border border-gray-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
             </div>
             {msgProfil && (
-              <p className={`text-sm px-4 py-3 rounded-xl ${msgProfil.includes('Erreur') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+              <p className={`text-sm px-4 py-3 rounded-md ${msgProfil.includes('Erreur') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
                 {msgProfil}
               </p>
             )}
             <motion.button onClick={sauvegarderProfil} disabled={savingProfil}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+              className="px-6 py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-50"
+              style={{ background: '#2d6a4f' }}>
               {savingProfil ? 'Enregistrement...' : 'Sauvegarder'}
             </motion.button>
           </div>
@@ -279,31 +266,26 @@ export default function ParametresPage() {
 
         {/* Changer email */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100"
-            style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-            <h2 className="font-bold text-white">Adresse email</h2>
-            <p className="text-green-300 text-xs mt-0.5">Email actuel : {email}</p>
+          className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-800">Adresse email</h2>
+            <p className="text-gray-400 text-xs mt-0.5">Email actuel : {email}</p>
           </div>
           <div className="p-5 md:p-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Nouvel email</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nouvel email</label>
               <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
                 placeholder="nouveau@email.com"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                className="w-full border border-gray-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             {msgEmail && (
-              <p className={`text-sm px-4 py-3 rounded-xl ${msgEmail.includes('Erreur') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+              <p className={`text-sm px-4 py-3 rounded-md ${msgEmail.includes('Erreur') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
                 {msgEmail}
               </p>
             )}
             <motion.button onClick={changerEmail} disabled={savingEmail || !newEmail}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+              className="px-6 py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-50"
+              style={{ background: '#2d6a4f' }}>
               {savingEmail ? 'Mise à jour...' : "Changer l'email"}
             </motion.button>
           </div>
@@ -311,37 +293,32 @@ export default function ParametresPage() {
 
         {/* Mot de passe */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100"
-            style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-            <h2 className="font-bold text-white">Mot de passe</h2>
-            <p className="text-green-300 text-xs mt-0.5">Minimum 6 caractères</p>
+          className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-800">Mot de passe</h2>
+            <p className="text-gray-400 text-xs mt-0.5">Minimum 6 caractères</p>
           </div>
           <div className="p-5 md:p-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Nouveau mot de passe</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nouveau mot de passe</label>
               <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                className="w-full border border-gray-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Confirmer</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Confirmer</label>
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                className="w-full border border-gray-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             {msgPassword && (
-              <p className={`text-sm px-4 py-3 rounded-xl ${msgPassword.includes('Erreur') || msgPassword.includes('correspondent') || msgPassword.includes('caractères') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+              <p className={`text-sm px-4 py-3 rounded-md ${msgPassword.includes('Erreur') || msgPassword.includes('correspondent') || msgPassword.includes('caractères') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
                 {msgPassword}
               </p>
             )}
             <motion.button onClick={changerMotDePasse} disabled={savingPassword || !newPassword}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              className="px-6 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+              className="px-6 py-2.5 rounded-md text-white text-sm font-medium disabled:opacity-50"
+              style={{ background: '#2d6a4f' }}>
               {savingPassword ? 'Mise à jour...' : 'Changer le mot de passe'}
             </motion.button>
           </div>
@@ -349,27 +326,22 @@ export default function ParametresPage() {
 
         {/* 2FA */}
 <motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 0.45 }}
-  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-  <div className="px-6 py-4 border-b border-gray-100"
-    style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
-    <h2 className="font-bold text-white">Authentification à deux facteurs</h2>
-    <p className="text-green-300 text-xs mt-0.5">Renforcez la sécurité de votre compte</p>
+  className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+  <div className="px-6 py-4 border-b border-gray-100">
+    <h2 className="font-semibold text-gray-800">Authentification à deux facteurs</h2>
+    <p className="text-gray-400 text-xs mt-0.5">Renforcez la sécurité de votre compte</p>
   </div>
   <div className="p-6">
     {mfaActif ? (
       <>
-        <div className="flex items-center gap-3 p-3 rounded-xl mb-4" style={{ background: '#f0f9f4' }}>
+        <div className="flex items-center gap-3 p-3 rounded-md mb-4" style={{ background: '#f0f9f4' }}>
           <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#2d6a4f' }} />
           <p className="text-sm font-medium" style={{ color: '#2d6a4f' }}>2FA actif sur votre compte</p>
         </div>
         {!afficherDesactiver ? (
           <motion.button
             onClick={() => { setAfficherDesactiver(true); setErreur2FA('') }}
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            className="px-6 py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-600 hover:bg-red-50">
+            className="px-6 py-2.5 rounded-md text-sm font-medium border-2 border-red-200 text-red-600 hover:bg-red-50">
             Désactiver le 2FA
           </motion.button>
         ) : (
@@ -383,17 +355,15 @@ export default function ParametresPage() {
               placeholder="000000"
               maxLength={6}
               autoFocus
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-red-400" />
-            {erreur2FA && <p className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-xl">{erreur2FA}</p>}
+              className="w-full border border-gray-200 rounded-md px-4 py-3 text-center text-xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-red-400" />
+            {erreur2FA && <p className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-md">{erreur2FA}</p>}
             <div className="flex gap-3">
               <motion.button onClick={desactiverMFA} disabled={desactivant2FA || code2FA.length < 6}
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-red-600 text-white disabled:opacity-50">
+                className="flex-1 py-2.5 rounded-md text-sm font-medium bg-red-600 text-white disabled:opacity-50">
                 {desactivant2FA ? 'Désactivation...' : 'Confirmer'}
               </motion.button>
               <motion.button onClick={() => { setAfficherDesactiver(false); setCode2FA(''); setErreur2FA('') }}
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600">
+                className="flex-1 py-2.5 rounded-md text-sm font-medium border border-gray-200 text-gray-600">
                 Annuler
               </motion.button>
             </div>
@@ -407,9 +377,8 @@ export default function ParametresPage() {
         </p>
         <motion.button
           onClick={() => router.push('/securite/2fa')}
-          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-          className="px-6 py-2.5 rounded-xl text-white text-sm font-medium shadow-md"
-          style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+          className="px-6 py-2.5 rounded-md text-white text-sm font-medium"
+          style={{ background: '#2d6a4f' }}>
           Activer le 2FA
         </motion.button>
       </>
@@ -420,12 +389,9 @@ export default function ParametresPage() {
 
         {/* Danger zone */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden">
+          className="bg-white rounded-lg shadow-sm border border-red-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-red-100 bg-red-50">
-            <h2 className="font-bold text-red-700">Zone de danger</h2>
+            <h2 className="font-semibold text-red-700">Zone de danger</h2>
             <p className="text-red-400 text-xs mt-0.5">Actions irréversibles</p>
           </div>
           <div className="p-6">
@@ -434,32 +400,29 @@ export default function ParametresPage() {
             </p>
             {!confirmDelete ? (
               <motion.button
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 onClick={() => setConfirmDelete(true)}
-                className="px-6 py-2.5 rounded-xl text-sm font-medium border-2 border-red-300 text-red-600 hover:bg-red-50 transition-all">
+                className="px-6 py-2.5 rounded-md text-sm font-medium border-2 border-red-300 text-red-600 hover:bg-red-50 transition-all">
                 Supprimer mon compte
               </motion.button>
             ) : (
               <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+                <div className="p-4 rounded-md bg-red-50 border border-red-200">
                   <p className="text-sm font-semibold text-red-700 mb-1">Confirmer la suppression ?</p>
                   <p className="text-xs text-red-500">Cette action est irréversible. Votre accès sera révoqué immédiatement.</p>
                 </div>
                 {msgDelete && (
-                  <p className="text-sm px-4 py-3 rounded-xl bg-red-50 text-red-600">{msgDelete}</p>
+                  <p className="text-sm px-4 py-3 rounded-md bg-red-50 text-red-600">{msgDelete}</p>
                 )}
                 <div className="flex gap-3">
                   <motion.button
                     onClick={supprimerCompte}
                     disabled={deletingAccount}
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                    className="px-6 py-2.5 rounded-xl text-sm font-medium bg-red-600 text-white disabled:opacity-50">
+                    className="px-6 py-2.5 rounded-md text-sm font-medium bg-red-600 text-white disabled:opacity-50">
                     {deletingAccount ? 'Suppression...' : 'Oui, supprimer'}
                   </motion.button>
                   <motion.button
                     onClick={() => { setConfirmDelete(false); setMsgDelete('') }}
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                    className="px-6 py-2.5 rounded-xl text-sm font-medium border border-gray-200 text-gray-600">
+                    className="px-6 py-2.5 rounded-md text-sm font-medium border border-gray-200 text-gray-600">
                     Annuler
                   </motion.button>
                 </div>
