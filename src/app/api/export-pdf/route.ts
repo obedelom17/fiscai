@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Bulletin fiscal : ${client.raison_sociale}</title>
+<title>Bulletin fiscal — ${client.raison_sociale}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; background: white; font-size: 11px; }
@@ -90,8 +90,8 @@ export async function GET(request: NextRequest) {
 <div class="header">
   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
     <div>
-      <div class="header-logo">FiscAI</div>
-      <div class="header-sub">Suivi des dossiers fiscaux</div>
+      <div class="header-logo">FiscAl</div>
+      <div class="header-sub">Experts Afrique Conseils — Lomé, Togo</div>
     </div>
     <div style="text-align:right;">
       <div class="header-title">Bulletin de Suivi Fiscal</div>
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
 </div>
 
 <div class="footer">
-  <div class="footer-text">Document généré automatiquement par <strong>FiscAI</strong></div>
+  <div class="footer-text">Document généré automatiquement par <strong>FiscAl</strong> — Experts Afrique Conseils</div>
   <div class="footer-text" style="color:#2d6a4f;font-weight:600;">Confidentiel</div>
 </div>
 </body>

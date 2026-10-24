@@ -96,7 +96,7 @@ async function executerTool(
           user_id: process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY,
           template_params: {
             to_email: email,
-            from_name: 'FiscAI',
+            from_name: 'Experts Afrique Conseils',
             message: args.message,
           },
         }),
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
   const messagesGroq: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: `Tu es FiscAI, un assistant fiscal intelligent pour un cabinet de conseil fiscal au Togo.
+      content: `Tu es FiscAl, un assistant fiscal intelligent pour le cabinet Experts Afrique Conseils au Togo.
 Tu aides les collaborateurs à analyser les dossiers fiscaux de leurs clients.
 Tu connais la fiscalité togolaise : TVA, IRPP, Impôt sur les Sociétés,Acompte OTR,Patente, Retenue Sur Loyer, Droit d’Enregistrement, Taxe d’Habitation, Taxe Foncière sur Propriétés Bâties et Taxe Foncière sur Propriétés Non Bâties.
 Tu te souviens des échanges précédents et tu en tiens compte.

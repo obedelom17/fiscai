@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       const { data: admins } = await supabase
         .from('collaborateurs').select('id').eq('role', 'admin')
       if (admins && admins.length <= 1 && admins[0].id === collaborateurId) {
-        return NextResponse.json({ error: 'Impossible : dernier administrateur' }, { status: 400 })
+        return NextResponse.json({ error: 'Impossible — dernier administrateur' }, { status: 400 })
       }
     }
 

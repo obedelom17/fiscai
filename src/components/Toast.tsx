@@ -37,14 +37,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             return (
               <motion.div
                 key={t.id}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="flex items-center gap-3 px-4 py-3 rounded-md border pointer-events-auto max-w-sm"
+                initial={{ opacity: 0, x: 80, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 80, scale: 0.9 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border pointer-events-auto max-w-sm"
                 style={{ background: c.bg, borderColor: c.border + '40', borderWidth: 1 }}
               >
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                   style={{ background: c.border }}>
                   {c.icon}
                 </div>

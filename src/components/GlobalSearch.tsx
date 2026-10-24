@@ -58,7 +58,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
       seen.add(d.id)
       r.push({
         id: d.id, type: 'dossier',
-        titre: `${d.type_impot} : ${d.clients?.raison_sociale || ''}`,
+        titre: `${d.type_impot} — ${d.clients?.raison_sociale || ''}`,
         sousTitre: `Année ${d.periode_annee} · ${d.statut}`,
         href: '/dashboard/dossiers'
       })
@@ -67,7 +67,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
     ;(relances as RelanceRow[] || []).forEach((rel) => {
       r.push({
         id: rel.id, type: 'relance',
-        titre: `Relance ${rel.canal === 'whatsapp' ? 'WhatsApp' : 'Email'} : ${rel.clients?.raison_sociale}`,
+        titre: `Relance ${rel.canal === 'whatsapp' ? 'WhatsApp' : 'Email'} — ${rel.clients?.raison_sociale}`,
         sousTitre: rel.contenu_email?.substring(0, 60) + '...',
         href: '/dashboard/dossiers'
       })
@@ -124,7 +124,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: -10 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-xl bg-white rounded-lg overflow-hidden"
+        className="w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden"
       >
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-gray-100">
