@@ -68,7 +68,7 @@ export default function DossierCommentaires({ dossierId }: { dossierId: string }
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3">
         Commentaires internes ({commentaires.length})
       </h3>
 
@@ -84,12 +84,12 @@ export default function DossierCommentaires({ dossierId }: { dossierId: string }
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="flex items-start gap-2.5 p-3 rounded-xl"
+                className="flex items-start gap-2.5 p-3 rounded-md"
                 style={{ background: '#f8fafc' }}
               >
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0"
+                  style={{ background: '#e8f0eb', color: '#2d6a4f' }}
                 >
                   {c.collaborateurs ? `${c.collaborateurs.prenom[0]}${c.collaborateurs.nom[0]}` : '?'}
                 </div>
@@ -125,13 +125,13 @@ export default function DossierCommentaires({ dossierId }: { dossierId: string }
           onChange={e => setContenu(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ajouter() } }}
           placeholder="Ajouter une note interne... (Entrée pour envoyer)"
-          className="flex-1 text-xs border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="flex-1 text-xs border border-gray-200 rounded-md px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         <button
           onClick={ajouter}
           disabled={saving || !contenu.trim()}
-          className="px-3 py-2.5 rounded-xl text-white text-xs font-medium disabled:opacity-40 flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}
+          className="px-3 py-2.5 rounded-md text-white text-xs font-medium disabled:opacity-40 flex-shrink-0"
+          style={{ background: '#2d6a4f' }}
         >
           {saving ? '...' : 'Envoyer'}
         </button>

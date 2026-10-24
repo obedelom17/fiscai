@@ -41,7 +41,7 @@ export default function HistoriqueStatuts({ dossierId }: { dossierId: string }) 
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3">
         Historique des statuts ({historique.length})
       </h3>
 

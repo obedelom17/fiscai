@@ -1,6 +1,6 @@
 {
-  "name": "FiscAl — Experts Afrique Conseils",
-  "short_name": "FiscAl",
+  "name": "FiscAI",
+  "short_name": "FiscAI",
   "description": "Gestion des dossiers fiscaux OTR Togo",
   "start_url": "/dashboard",
   "display": "standalone",

@@ -4,6 +4,8 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
+import Logo from '@/components/Logo'
+import { clearCache } from '@/lib/cache'
 import { upsertCollaborateurProfile, resolveCollaborateurRole, needsMfaVerification, getVerifiedTotpFactor } from '@/lib/collaborateur-profile'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,6 +28,8 @@ export default function AuthPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => { clearCache() }, [])
 
   useEffect(() => {
     async function initAuthState() {
@@ -165,20 +169,18 @@ export default function AuthPage() {
   // Écran vérification 2FA à la connexion
   if (needsMFA) return (
     <div className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: 'linear-gradient(135deg, #0f2318 0%, #1a3c2e 50%, #2d6a4f 100%)' }}>
+      style={{ background: '#1a3c2e' }}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
+        className="bg-white rounded-lg p-8 w-full max-w-md">
 
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5"
-            style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-lg mb-5"
+            style={{ background: '#2d6a4f' }}>
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-black text-gray-800 mb-2">Vérification 2FA</h2>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">Vérification 2FA</h2>
           <p className="text-gray-500 text-sm leading-relaxed">
             Entrez le code à 6 chiffres généré par votre application d'authentification.
           </p>
@@ -192,11 +194,11 @@ export default function AuthPage() {
           placeholder="000000"
           maxLength={6}
           autoFocus
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
+          className="w-full border border-gray-200 rounded-md px-4 py-3 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
         />
 
         {erreur && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3 mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-md px-4 py-3 mb-4">
             {erreur}
           </div>
         )}
@@ -204,9 +206,8 @@ export default function AuthPage() {
         <motion.button
           onClick={handleMfaVerification}
           disabled={loading || mfaCode.length < 6}
-          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-          className="w-full py-3.5 rounded-xl text-white font-bold text-sm shadow-lg disabled:opacity-50 mb-3"
-          style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+          className="w-full py-3.5 rounded-md text-white font-semibold text-sm disabled:opacity-50 mb-3"
+          style={{ background: '#1a3c2e' }}>
           {loading ? 'Vérification...' : 'Valider'}
         </motion.button>
 
@@ -218,7 +219,7 @@ export default function AuthPage() {
             setMfaFactorId('')
             setErreur('')
           }}
-          className="w-full py-3 rounded-xl text-sm font-medium border border-gray-200 text-gray-500 hover:bg-gray-50">
+          className="w-full py-3 rounded-md text-sm font-medium border border-gray-200 text-gray-500 hover:bg-gray-50">
           Retour à la connexion
         </button>
       </motion.div>
@@ -228,25 +229,23 @@ export default function AuthPage() {
   // Écran proposition 2FA après inscription
   if (proposer2FA) return (
     <div className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: 'linear-gradient(135deg, #0f2318 0%, #1a3c2e 50%, #2d6a4f 100%)' }}>
+      style={{ background: '#1a3c2e' }}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md text-center">
+        className="bg-white rounded-lg p-8 w-full max-w-md text-center">
 
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5"
-          style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-lg mb-5"
+          style={{ background: '#2d6a4f' }}>
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
         </div>
 
-        <h2 className="text-2xl font-black text-gray-800 mb-2">Compte créé !</h2>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-2">Compte créé !</h2>
         <p className="text-gray-500 text-sm mb-6 leading-relaxed">
           Voulez-vous activer l'authentification à deux facteurs pour renforcer la sécurité de votre compte ?
         </p>
 
-        <div className="p-4 rounded-2xl mb-6 text-left space-y-2" style={{ background: '#f0f9f4' }}>
+        <div className="p-4 rounded-lg mb-6 text-left space-y-2" style={{ background: '#f0f9f4' }}>
           {[
             'Protection contre les accès non autorisés',
             'Code unique à chaque connexion',
@@ -267,15 +266,13 @@ export default function AuthPage() {
         <div className="flex flex-col gap-3">
           <motion.button
             onClick={() => router.push('/securite/2fa')}
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            className="w-full py-3.5 rounded-xl text-white font-bold text-sm shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+            className="w-full py-3.5 rounded-md text-white font-semibold text-sm"
+            style={{ background: '#1a3c2e' }}>
             Oui, activer le 2FA
           </motion.button>
           <motion.button
             onClick={() => router.push('/dashboard')}
-            whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-            className="w-full py-3 rounded-xl text-sm font-medium border border-gray-200 text-gray-500 hover:bg-gray-50">
+            className="w-full py-3 rounded-md text-sm font-medium border border-gray-200 text-gray-500 hover:bg-gray-50">
             Non, ignorer pour l'instant
           </motion.button>
         </div>
@@ -299,52 +296,24 @@ export default function AuthPage() {
 
       {/* Panneau gauche */}
       <div className="hidden lg:flex flex-col justify-between w-[55%] relative p-14">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1400&q=90"
-            alt=""
-            className="w-full h-full object-cover object-center"
-            style={{ filter: 'brightness(0.35)' }}
-          />
-          <div className="absolute inset-0" style={{
-            background: 'linear-gradient(135deg, rgba(10,31,18,0.7) 0%, rgba(26,60,46,0.4) 100%)'
-          }} />
-        </div>
-
         <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
-              <span className="text-white text-lg font-black">F</span>
-            </div>
-            <div>
-              <p className="text-white font-bold text-lg leading-none">FiscAl</p>
-              <p className="text-green-400 text-xs mt-0.5">Experts Afrique Conseils</p>
-            </div>
-          </div>
+          <Logo size={40} onDark />
         </div>
 
         <div className="relative z-10">
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-5xl font-black text-white leading-tight mb-8">
-            Vos dossiers fiscaux,{' '}
-            <span style={{ color: '#e8a317' }}>toujours<br />à jour</span>
+            className="text-4xl xl:text-5xl font-semibold tracking-tight text-white leading-tight mb-8">
+            Vos dossiers fiscaux,<br />toujours à jour
           </motion.h1>
 
           <div className="space-y-4">
             {features.map((text, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
                 className="flex items-center gap-3">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(232,163,23,0.2)', border: '1px solid #e8a317' }}>
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#e8a317' }} />
+                  style={{ border: '1px solid rgba(255,255,255,0.35)' }}>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ffffff' }} />
                 </div>
                 <span className="text-white/80 text-sm font-medium">{text}</span>
               </motion.div>
@@ -353,7 +322,7 @@ export default function AuthPage() {
         </div>
 
         <div className="relative z-10">
-          <p className="text-white/30 text-xs">© 2026 Experts Afrique Conseils — Tous droits réservés</p>
+          <p className="text-white/30 text-xs">© 2026 FiscAI. Tous droits réservés.</p>
         </div>
       </div>
 
@@ -361,43 +330,29 @@ export default function AuthPage() {
       <div className="flex-1 flex items-center justify-center p-6 relative"
         style={{ background: '#f8fafb' }}>
 
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-5"
-          style={{ background: '#2d6a4f', transform: 'translate(30%, -30%)' }} />
-        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-5"
-          style={{ background: '#2d6a4f', transform: 'translate(-30%, 30%)' }} />
 
         <div className="w-full max-w-md relative z-10">
 
           {/* Logo mobile */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #e8a317, #f5c842)' }}>
-              <span className="text-white font-black">F</span>
-            </div>
-            <div>
-              <p className="font-bold text-gray-800">FiscAl</p>
-              <p className="text-xs text-gray-400">Experts Afrique Conseils</p>
-            </div>
+          <div className="mb-8 lg:hidden">
+            <Logo size={36} />
           </div>
 
           {/* Card */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+            className="bg-white rounded-lg p-8 border border-gray-100">
 
             {/* Onglets */}
-            <div className="flex bg-gray-100 rounded-2xl p-1 mb-7 relative">
+            <div className="flex bg-gray-100 rounded-lg p-1 mb-7 relative">
               <motion.div
-                className="absolute top-1 bottom-1 rounded-xl shadow-sm"
-                style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)', width: 'calc(50% - 4px)' }}
+                className="absolute top-1 bottom-1 rounded-md shadow-sm"
+                style={{ background: '#1a3c2e', width: 'calc(50% - 4px)' }}
                 animate={{ left: mode === 'connexion' ? '4px' : 'calc(50%)' }}
                 transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               />
               {(['connexion', 'inscription'] as const).map(m => (
                 <button key={m} onClick={() => changerMode(m)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold relative z-10 transition-colors duration-200"
+                  className="flex-1 py-2.5 rounded-md text-sm font-semibold relative z-10 transition-colors duration-200"
                   style={{ color: mode === m ? 'white' : '#6b7280' }}>
                   {m === 'connexion' ? 'Connexion' : 'Inscription'}
                 </button>
@@ -413,13 +368,13 @@ export default function AuthPage() {
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.2 }}
                 className="mb-6">
-                <h2 className="text-xl font-bold text-gray-800">
+                <h2 className="text-xl font-semibold text-gray-800">
                   {mode === 'connexion' ? 'Bon retour ' : 'Créer un compte'}
                 </h2>
                 <p className="text-gray-400 text-sm mt-0.5">
                   {mode === 'connexion'
-                    ? 'Connectez-vous à votre espace FiscAl'
-                    : 'Rejoignez le cabinet sur FiscAl'}
+                    ? 'Connectez-vous à votre espace FiscAI'
+                    : 'Rejoignez le cabinet sur FiscAI'}
                 </p>
               </motion.div>
             </AnimatePresence>
@@ -440,7 +395,7 @@ export default function AuthPage() {
                     <div className="flex flex-col items-center gap-2">
                       <div
                         onClick={() => avatarInputRef.current?.click()}
-                        className="w-20 h-20 rounded-2xl overflow-hidden cursor-pointer border-2 border-dashed flex items-center justify-center transition-all hover:border-green-500"
+                        className="w-20 h-20 rounded-lg overflow-hidden cursor-pointer border-2 border-dashed flex items-center justify-center transition-all hover:border-green-500"
                         style={{ borderColor: avatarPreview ? 'transparent' : '#d1d5db', background: avatarPreview ? 'transparent' : '#f9fafb' }}>
                         {avatarPreview ? (
                           <img src={avatarPreview} alt="Aperçu" className="w-full h-full object-cover" />
@@ -458,17 +413,17 @@ export default function AuthPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Prénom</label>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Prénom</label>
                         <input type="text" value={prenom} onChange={e => setPrenom(e.target.value)}
                           placeholder="Kofi"
-                          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                          className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                           style={{ '--tw-ring-color': '#2d6a4f' } as any} />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Nom</label>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Nom</label>
                         <input type="text" value={nom} onChange={e => setNom(e.target.value)}
                           placeholder="Mensah"
-                          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                          className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                           style={{ '--tw-ring-color': '#2d6a4f' } as any} />
                       </div>
                     </div>
@@ -476,12 +431,12 @@ export default function AuthPage() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Email</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Email</label>
                   <div className="relative">
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                       placeholder="votre@email.com"
                       onKeyDown={e => e.key === 'Enter' && (mode === 'connexion' ? handleConnexion() : handleInscription())}
-                      className="w-full border border-gray-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                      className="w-full border border-gray-200 rounded-md pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                       style={{ '--tw-ring-color': '#2d6a4f' } as any} />
                     <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -490,14 +445,14 @@ export default function AuthPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Mot de passe</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Mot de passe</label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password} onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••"
                       onKeyDown={e => e.key === 'Enter' && (mode === 'connexion' ? handleConnexion() : handleInscription())}
-                      className="w-full border border-gray-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                      className="w-full border border-gray-200 rounded-md pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                       style={{ '--tw-ring-color': '#2d6a4f' } as any} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
@@ -530,7 +485,7 @@ export default function AuthPage() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
+                      className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-md px-4 py-3">
                       {erreur}
                     </motion.div>
                   )}
@@ -539,10 +494,8 @@ export default function AuthPage() {
                 <motion.button
                   onClick={mode === 'connexion' ? handleConnexion : handleInscription}
                   disabled={loading}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  className="w-full py-3.5 rounded-xl text-white font-bold text-sm disabled:opacity-50 shadow-lg"
-                  style={{ background: 'linear-gradient(135deg, #1a3c2e, #2d6a4f)' }}>
+                  className="w-full py-3.5 rounded-md text-white font-semibold text-sm disabled:opacity-50"
+                  style={{ background: '#1a3c2e' }}>
                   {loading
                     ? <span className="flex items-center justify-center gap-2">
                         <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -564,9 +517,7 @@ export default function AuthPage() {
             {/* Google */}
             <motion.button
               onClick={handleGoogle}
-              whileHover={{ scale: 1.01, boxShadow: '0 4px 15px rgba(0,0,0,0.08)' }}
-              whileTap={{ scale: 0.99 }}
-              className="w-full py-3.5 rounded-xl text-sm font-semibold border border-gray-200 flex items-center justify-center gap-3 text-gray-700 bg-white transition-all">
+              className="w-full py-3.5 rounded-md text-sm font-semibold border border-gray-200 flex items-center justify-center gap-3 text-gray-700 bg-white transition-all">
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
