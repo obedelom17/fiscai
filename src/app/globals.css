@@ -85,10 +85,7 @@ textarea:focus {
 
 /* Sidebar */
 .sidebar-surface {
-  background:
-    radial-gradient(120% 60% at 0% 0%, rgba(45, 106, 79, 0.45) 0%, transparent 60%),
-    radial-gradient(90% 50% at 100% 100%, rgba(232, 163, 23, 0.10) 0%, transparent 60%),
-    linear-gradient(180deg, #123024 0%, #0e261b 100%);
+  background: linear-gradient(180deg, #0f2318 0%, #1a3c2e 100%);
 }
 .nav-active {
   background: linear-gradient(135deg, rgba(232, 163, 23, 0.20), rgba(232, 163, 23, 0.08));
@@ -103,7 +100,7 @@ textarea:focus {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-main > div { animation: fadeUp 0.35s ease both; }
+
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

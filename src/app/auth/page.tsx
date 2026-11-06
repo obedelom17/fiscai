@@ -297,7 +297,12 @@ export default function AuthPage() {
       {/* Panneau gauche */}
       <div className="hidden lg:flex flex-col justify-between w-[55%] relative p-14"
         style={{ backgroundImage: 'url(/banners/auth.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(11,31,22,0.55) 0%, rgba(11,31,22,0.25) 100%)' }} />
+        <div className="absolute inset-0">
+          <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1400&q=90" alt=""
+            className="w-full h-full object-cover object-center" style={{ filter: 'brightness(0.35)' }}
+            onError={(e) => { e.currentTarget.style.opacity = '0' }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(10,31,18,0.7) 0%, rgba(26,60,46,0.4) 100%)' }} />
+        </div>
         <div className="relative z-10">
           <Logo size={44} onDark subtitle="Experts Afrique Conseils" />
         </div>

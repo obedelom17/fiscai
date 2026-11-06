@@ -7,6 +7,7 @@ import { usePersistentState, hasCache } from '@/lib/cache'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import GlobalSearch from '@/components/GlobalSearch'
+import { BannerImage } from '@/components/PageHeader'
 import type { DossierFiscal, Relance, AuditLog } from '@/lib/types'
 
 export default function DashboardHome() {
@@ -107,37 +108,23 @@ export default function DashboardHome() {
 
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
-      {/* Bandeau */}
-      <div className="page-banner" style={{ backgroundImage: 'url(/banners/home.svg)' }}>
-        <div className="flex justify-end px-4 md:px-8 pt-5">
+      {/* Bannière */}
+      <div className="relative h-40 md:h-48 overflow-hidden" style={{ backgroundColor: '#0b1f16', backgroundImage: 'url(/banners/home.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <BannerImage banner="home" />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(10,31,18,0.80) 0%, rgba(26,60,46,0.65) 60%, rgba(45,106,79,0.4) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 0%, transparent 50%, #f0f4f1 100%)' }} />
+        <div className="absolute top-4 right-4 md:right-8">
           <button
             onClick={() => setShowSearch(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-medium transition-colors flex-shrink-0 text-white hover:bg-white/20"
-            style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(8px)' }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
+            style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(8px)' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <span className="hidden md:inline">Recherche globale</span>
-            <span className="hidden md:inline text-xs text-white/60">Ctrl+K</span>
+            <span className="hidden md:inline text-xs opacity-60 ml-1">Ctrl+K</span>
           </button>
-        </div>
-        <div className="px-4 md:px-8 pt-16 md:pt-20 pb-6 flex items-end gap-4">
-          <div className="relative flex-shrink-0">
-            {user?.avatar_url ? (
-              <img src={user.avatar_url} alt="" className="w-16 h-16 md:w-[72px] md:h-[72px] rounded-2xl object-cover" style={{ boxShadow: '0 0 0 4px #fff, 0 10px 24px rgba(15,35,24,0.25)' }} />
-            ) : (
-              <div className="w-16 h-16 md:w-[72px] md:h-[72px] rounded-2xl flex items-center justify-center text-white text-xl font-bold"
-                style={{ background: 'linear-gradient(135deg,#2d6a4f,#1a3c2e)', boxShadow: '0 0 0 4px #fff, 0 10px 24px rgba(15,35,24,0.25)' }}>
-                {user?.prenom?.[0]}{user?.nom?.[0]}
-              </div>
-            )}
-            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white" style={{ background: '#22c55e' }} />
-          </div>
-          <div className="min-w-0 pb-1">
-            <h1 className="text-xl md:text-[28px] font-bold tracking-tight truncate" style={{ color: 'var(--green-900)' }}>{salutation}, {user?.prenom} !</h1>
-            <p className="text-gray-500 text-xs md:text-sm mt-0.5">{user?.role === 'admin' ? 'Administrateur' : 'Collaborateur'} — Experts Afrique Conseils</p>
-          </div>
         </div>
       </div>
 
@@ -146,14 +133,33 @@ export default function DashboardHome() {
         {showSearch && <GlobalSearch onClose={() => setShowSearch(false)} />}
       </AnimatePresence>
 
-      <div className="px-4 md:px-8 pt-6 md:pt-8">
+      <div className="px-4 md:px-8">
+        {/* Profil */}
+        <div className="flex items-end gap-4 md:gap-6 -mt-10 md:-mt-12 mb-6 md:mb-8">
+          <div className="relative flex-shrink-0">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="Avatar" className="w-16 h-16 md:w-24 md:h-24 rounded-2xl object-cover shadow-xl border-4 border-white" />
+            ) : (
+              <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl flex items-center justify-center text-white text-2xl md:text-3xl font-bold shadow-xl border-4 border-white"
+                style={{ background: 'linear-gradient(135deg, #2d6a4f, #1a3c2e)' }}>
+                {user?.prenom?.[0]}{user?.nom?.[0]}
+              </div>
+            )}
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 md:w-5 md:h-5 rounded-full border-2 border-white" style={{ background: '#2d6a4f' }} />
+          </div>
+          <div className="pb-2 pt-10 md:pt-16">
+            <h1 className="text-lg md:text-2xl font-bold text-gray-800">{salutation}, {user?.prenom} !</h1>
+            <p className="text-gray-500 text-xs md:text-sm mt-0.5">{user?.role === 'admin' ? 'Administrateur' : 'Collaborateur'} — Experts Afrique Conseils</p>
+          </div>
+        </div>
+
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
           {[
             { label: 'Clients', value: stats.clients, color: '#1a5c3e', href: '/dashboard/clients' },
             { label: 'Dossiers', value: stats.dossiers, color: '#2563eb', href: '/dashboard/dossiers' },
             { label: 'En attente', value: stats.enAttente, color: '#d97706', href: '/dashboard/dossiers' },
-            { label: 'Alertes OTR', value: stats.alertes, color: stats.alertes > 0 ? '#dc2626' : '#2d6a4f', href: '/admin/statistiques' },
+            { label: 'Alertes OTR', value: stats.alertes, color: '#dc2626', href: '/admin/statistiques' },
           ].map((kpi, i) => (
             <motion.div key={i}>
               <Link href={kpi.href} className="block bg-white rounded-lg p-4 md:p-5 shadow-sm border border-gray-100">
