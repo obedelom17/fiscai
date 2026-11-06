@@ -4,7 +4,7 @@ import { genererClesVapid } from '@/lib/push-server'
 
 export const dynamic = 'force-dynamic'
 
-/** Opérateurs de la plateforme uniquement : génère une paire de clés VAPID à copier dans les variables Vercel. */
+/** Opérateurs de la plateforme uniquement : génère une paire de clés VAPID à copier dans les variables Cloudflare. */
 export async function GET() {
   const ctx = await utilisateurCourant()
   if (!ctx) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -14,6 +14,6 @@ export async function GET() {
   return NextResponse.json({
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: k.publicKey,
     VAPID_PRIVATE_KEY: k.privateKey,
-    note: 'Copiez ces deux valeurs dans Vercel > Settings > Environment Variables, puis redéployez. Ne partagez jamais la clé privée.',
+    note: 'Copiez ces deux valeurs dans Cloudflare > Workers > fiscai > Settings > Variables and Secrets, puis redéployez. Ne partagez jamais la clé privée.',
   }, { headers: { 'Cache-Control': 'no-store' } })
 }

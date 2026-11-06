@@ -1,7 +1,6 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   experimental: {
     staleTimes: { dynamic: 60, static: 300 },
     optimizePackageImports: ['framer-motion', 'lucide-react', 'recharts'],

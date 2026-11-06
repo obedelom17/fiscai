@@ -1,13 +1,13 @@
 # FiscAI
 
 Suivi des dossiers fiscaux et des échéances OTR pour les cabinets comptables et fiscaux (plateforme multi-cabinets).
-Next.js 16, Supabase, Tailwind 4, déploiement Vercel.
+Next.js 16, Supabase, Tailwind 4, déploiement Cloudflare Workers (OpenNext).
 
 ## Mise en route
 
-1. Variables d'environnement : voir `.env.example` (à renseigner dans Vercel > Settings > Environment Variables).
+1. Variables d'environnement : voir `.env.example` (à renseigner dans Cloudflare > Workers & Pages > fiscai > Settings > Variables and Secrets ; les clés secrètes en type Secret).
 2. Base de données : exécuter `supabase/schema.sql` (première installation), puis chaque fichier de `supabase/migrations/` dans l'ordre (`2026-11-06_ameliorations.sql`, puis `2026-11-07_multi_cabinets.sql`), depuis Supabase > SQL Editor.
-3. Déployer : un push sur `main` déclenche Vercel.
+3. Déployer : un push sur `main` déclenche Workers Builds (build : `npx opennextjs-cloudflare build`, déploiement : `npx opennextjs-cloudflare deploy`).
 
 ## Fonctionnalités automatiques
 
@@ -19,7 +19,7 @@ Next.js 16, Supabase, Tailwind 4, déploiement Vercel.
 | Notification push quotidienne | chaque jour 07h00 | Paramètres > Automatisations + chaque utilisateur active son appareil |
 | Sauvegarde JSON des tables | chaque dimanche 02h00 | bucket privé `sauvegardes`, 8 sauvegardes conservées |
 
-Les crons sont déclarés dans `vercel.json` et protégés par `CRON_SECRET`.
+Les crons sont déclarés dans `wrangler.jsonc` (Cron Triggers) et exécutés par `worker.ts`, qui appelle `/api/cron/*` avec `CRON_SECRET`.
 La sauvegarde ne couvre pas les fichiers PDF du Storage `documents-fiscaux`.
 
 ## Règles métier à valider
@@ -30,9 +30,9 @@ Les échéances générées et les pénalités sont calculées avec des règles 
 
 ## Environnement de test (staging)
 
-Vercel crée un aperçu pour chaque branche et chaque pull request. Pour ne pas toucher aux données réelles :
+Workers Builds crée un aperçu pour chaque branche non production. Pour ne pas toucher aux données réelles :
 1. Créer un second projet Supabase « fiscai-test », y exécuter `schema.sql` et les migrations.
-2. Dans Vercel > Settings > Environment Variables, renseigner les variables du projet de test avec la portée **Preview** uniquement.
+2. Dans Cloudflare > Settings > Variables and Secrets, renseigner les variables du projet de test pour les builds de branche uniquement.
 3. Travailler sur une branche (`git checkout -b test`) : l'aperçu utilise la base de test, `main` utilise la production.
 
 ## Qualité

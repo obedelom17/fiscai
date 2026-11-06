@@ -6,7 +6,7 @@ import { executerQuotidien } from '@/lib/cron-quotidien'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-/** Appelé chaque jour par Vercel Cron (vercel.json). Nécessite CRON_SECRET. */
+/** Appelé chaque jour par Cloudflare Cron Trigger (wrangler.jsonc, worker.ts). Nécessite CRON_SECRET. */
 export async function GET(req: NextRequest) {
   if (!verifierCron(req)) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   try {
