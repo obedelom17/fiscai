@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { useToast } from '@/components/Toast'
 import { LogoMark } from '@/components/Logo'
 import { clearCache } from '@/lib/cache'
+import { useCabinet } from '@/lib/useCabinet'
 
 const SIDEBAR_KEY = 'fiscai_sidebar_collapsed'
 const notifiedIds = new Set<string>()
@@ -115,18 +116,22 @@ export default function Sidebar() {
     </button>
   )
 
+  const { cabinet, operateur } = useCabinet()
   const liensCollaborateur = [
     { href: '/dashboard', label: 'Accueil', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
     { href: '/dashboard/clients', label: 'Clients', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> },
     { href: '/dashboard/dossiers', label: 'Dossiers', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
     { href: '/dashboard/calendrier', label: 'Calendrier', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> },
     { href: '/dashboard/assistant', label: 'Assistant IA', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" /></svg> },
+    { href: '/dashboard/import', label: 'Import', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg> },
+    { href: '/nouveautes', label: 'Nouveautés', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
   ]
   const liensAdmin = [
     { href: '/admin/portefeuilles', label: 'Portefeuilles', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
     { href: '/admin/statistiques', label: 'Statistiques', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
+    { href: '/admin/erreurs', operateur: true, label: "Journal d'erreurs", icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg> },
   ]
-  const liens = isAdmin ? [...liensCollaborateur, ...liensAdmin] : liensCollaborateur
+  const liens = isAdmin ? [...liensCollaborateur, ...liensAdmin.filter((l: { operateur?: boolean }) => !l.operateur || operateur)] : liensCollaborateur
 
   const NavLink = ({ lien, isDrawer }: { lien: typeof liensCollaborateur[0]; isDrawer: boolean }) => {
     const actif = pathname === lien.href
@@ -151,7 +156,7 @@ export default function Sidebar() {
             <LogoMark size={36} />
             <button onClick={toggleCollapsed}
               className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-              title="Agrandir">
+              title="Agrandir" aria-label="Agrandir le menu">
               <svg className="w-4 h-4" style={{ transform: 'rotate(180deg)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
               </svg>
@@ -162,16 +167,16 @@ export default function Sidebar() {
             <LogoMark size={36} />
             <div className="min-w-0 flex-1">
               <p className="text-white font-bold text-base leading-none tracking-tight">Fisc<span style={{ color: '#e8a317' }}>AI</span></p>
-              <p className="text-[11px] leading-none mt-1.5 truncate" style={{ color: '#6ee7b7' }}>Experts Afrique Conseils</p>
+              <p className="text-[11px] leading-none mt-1.5 truncate" style={{ color: '#6ee7b7' }}>{cabinet?.nom ?? ''}</p>
             </div>
             {isDrawer ? (
-              <button className="text-white/50 hover:text-white p-1 flex-shrink-0" onClick={() => setOpen(false)}>
+              <button aria-label="Fermer le menu" className="text-white/50 hover:text-white p-1 flex-shrink-0" onClick={() => setOpen(false)}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             ) : (
               <button onClick={toggleCollapsed}
                 className="hidden lg:flex w-7 h-7 items-center justify-center rounded-lg hover:bg-white/10 text-white/50 hover:text-white flex-shrink-0 transition-colors"
-                title="Réduire">
+                title="Réduire" aria-label="Réduire le menu">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
               </button>
             )}
@@ -180,7 +185,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+      <nav aria-label="Navigation principale" className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {!loading && liens.map(lien => <NavLink key={lien.href} lien={lien} isDrawer={isDrawer} />)}
 
         <div className="pt-4 mt-2 border-t border-white/10">
@@ -253,7 +258,7 @@ export default function Sidebar() {
         </div>
         <div className="flex items-center gap-2">
           <Cloche isDrawer={true} />
-          <button onClick={() => setOpen(true)} className="p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.1)' }}>
+          <button aria-label="Ouvrir le menu" onClick={() => setOpen(true)} className="p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.1)' }}>
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 6h16M4 12h16M4 18h16" />
             </svg>

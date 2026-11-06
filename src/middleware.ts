@@ -9,6 +9,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // portail client public (lecture seule, protégé par jeton) et tâches planifiées (protégées par CRON_SECRET)
+  if (pathname.startsWith('/portail') || pathname.startsWith('/api/cron') || pathname === '/push-sw.js' || pathname === '/sw.js') {
+    return NextResponse.next()
+  }
+
   // laisser passer la page 2FA (gérée côté client)
   if (pathname.startsWith('/securite')) {
     return NextResponse.next()

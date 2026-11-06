@@ -57,6 +57,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Permission refusée' }, { status: 403 })
     }
 
+    // Cloisonnement : un admin ne peut supprimer que des comptes de son propre cabinet
+    if (targetUserId !== user.id) {
+      const { data: cible } = await supabase.from('collaborateurs').select('id').eq('id', targetUserId).maybeSingle()
+      if (!cible) return NextResponse.json({ error: 'Collaborateur introuvable dans votre cabinet' }, { status: 404 })
+    }
+
     // Bloquer si c'est le dernier admin
     if (targetUserId === user.id || requester.role === 'admin') {
       const { data: target } = await supabase

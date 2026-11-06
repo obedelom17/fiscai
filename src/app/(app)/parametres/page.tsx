@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
+import { PageSkeleton } from '@/components/Skeleton'
 import PageHeader from '@/components/PageHeader'
+import ThemeToggle from '@/components/ThemeToggle'
+import CabinetCard from '@/components/CabinetCard'
+import NotificationsCard from '@/components/NotificationsCard'
+import AutomatisationsCard from '@/components/AutomatisationsCard'
 
 export default function ParametresPage() {
   const [prenom, setPrenom] = useState('')
@@ -157,13 +162,7 @@ export default function ParametresPage() {
     }
   }
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-8 h-8 rounded-full border-2"
-        style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageSkeleton />
 
   return (
     <div style={{ background: '#f0f4f1' }}>
@@ -174,6 +173,11 @@ export default function ParametresPage() {
         />
 
       <div className="px-4 md:px-8 py-6 md:py-8 space-y-6">
+
+        <CabinetCard />
+        <ThemeToggle />
+        <NotificationsCard />
+        <AutomatisationsCard />
 
         {/* Photo de profil */}
         <motion.div

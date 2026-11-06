@@ -63,16 +63,27 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
       const path = `${dossier.id}/${Date.now()}_${file.name}`
       const { error: upErr } = await supabase.storage.from('documents-fiscaux').upload(path, file)
       if (upErr) { toast(`Erreur upload : ${file.name}`, 'error'); continue }
-      const { data: { publicUrl } } = supabase.storage.from('documents-fiscaux').getPublicUrl(path)
-      await supabase.from('documents').insert({ dossier_id: dossier.id, nom_fichier: file.name, url_stockage: publicUrl, type_document: 'document' })
+      // Le bucket est privé : on enregistre le chemin, l'ouverture passe par une URL signée temporaire.
+      await supabase.from('documents').insert({ dossier_id: dossier.id, nom_fichier: file.name, url_stockage: path, type_document: 'document' })
     }
     toast('Documents uploadés', 'success')
     chargerDocs()
     setUploading(false)
   }
 
+  /** Anciens documents : URL publique complète ; nouveaux : chemin seul. */
+  function cheminDocument(valeur: string): string {
+    return valeur.includes('/documents-fiscaux/') ? decodeURIComponent(valeur.split('/documents-fiscaux/')[1].split('?')[0]) : valeur
+  }
+
+  async function ouvrirDocument(valeur: string) {
+    const { data, error } = await supabase.storage.from('documents-fiscaux').createSignedUrl(cheminDocument(valeur), 120)
+    if (error || !data) { toast('Document inaccessible', 'error'); return }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+  }
+
   async function supprimerDoc(doc: any) {
-    await supabase.storage.from('documents-fiscaux').remove([doc.url_stockage.split('/documents-fiscaux/')[1]])
+    await supabase.storage.from('documents-fiscaux').remove([cheminDocument(doc.url_stockage)])
     await supabase.from('documents').delete().eq('id', doc.id)
     chargerDocs()
   }
@@ -161,7 +172,7 @@ export default function DossierPanel({ dossier, auditLogs, relancesOnglet, model
                 {documents.map(doc => (
                   <div key={doc.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
                     <span className="text-xs text-gray-600 flex-1 truncate">{doc.nom_fichier}</span>
-                    <a href={doc.url_stockage} target="_blank" rel="noreferrer" className="text-xs text-blue-500">Voir</a>
+                    <button onClick={() => ouvrirDocument(doc.url_stockage)} className="text-xs text-blue-500">Voir</button>
                     <button onClick={() => supprimerDoc(doc)} className="text-red-400 text-xs">✕</button>
                   </div>
                 ))}

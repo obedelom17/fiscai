@@ -7,6 +7,8 @@ import { usePersistentState, hasCache } from '@/lib/cache'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '@/components/PageHeader'
 import { useToast } from '@/components/Toast'
+import PortailClient from '@/components/PortailClient'
+import { EmptyState } from '@/components/Skeleton'
 
 type Client = {
   id: string
@@ -16,6 +18,8 @@ type Client = {
   secteur_activite: string
   email_contact: string
   telephone?: string
+  portail_token?: string | null
+  portail_actif?: boolean
 }
 
 const REGIME_LABELS: Record<string, string> = {
@@ -221,8 +225,10 @@ export default function ClientsPage() {
             <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
           </div>
         ) : clientsFiltres.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-lg border border-gray-100">
-            <p className="text-gray-400 text-sm">{recherche ? 'Aucun résultat' : 'Aucun client enregistré'}</p>
+          <div className="bg-white rounded-2xl border border-gray-100">
+            <EmptyState titre={recherche ? 'Aucun résultat' : 'Aucun client enregistré'}
+              description={recherche ? 'Essayez un autre nom ou un autre NIF.' : 'Ajoutez votre premier client ou importez votre portefeuille depuis Excel.'}
+              action={!recherche ? <a href="/dashboard/import" className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white inline-block" style={{ background: 'linear-gradient(135deg,#2d6a4f,#1a3c2e)' }}>Importer depuis Excel</a> : undefined} />
           </div>
         ) : (
           <>
@@ -260,7 +266,8 @@ export default function ClientsPage() {
                       <td className="px-5 py-4 text-sm text-gray-500">{c.telephone || '—'}</td>
                       <td className="px-5 py-4">
                         <div className="flex gap-1.5">
-<button onClick={() => ouvrirFormulaire(c)}
+<PortailClient clientId={c.id} nom={c.raison_sociale} token={c.portail_token} actif={c.portail_actif} onChange={charger} />
+                          <button onClick={() => ouvrirFormulaire(c)}
                             className="text-xs px-2.5 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                             Modifier
                           </button>
@@ -299,7 +306,8 @@ export default function ClientsPage() {
                       {c.telephone && <p className="text-xs text-gray-400">{c.telephone}</p>}
                     </div>
                     <div className="flex gap-1.5 flex-shrink-0 ml-2">
-<button onClick={() => ouvrirFormulaire(c)}
+<PortailClient clientId={c.id} nom={c.raison_sociale} token={c.portail_token} actif={c.portail_actif} onChange={charger} />
+                      <button onClick={() => ouvrirFormulaire(c)}
                         className="text-xs px-3 py-1.5 rounded-lg font-medium" style={{ background: '#f0f4f1', color: '#2d6a4f' }}>
                         Modifier
                       </button>

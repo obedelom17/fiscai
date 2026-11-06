@@ -1,6 +1,7 @@
 'use client'
 
 
+import { PageSkeleton } from '@/components/Skeleton'
 import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
@@ -65,12 +66,7 @@ export default function PortefeuillesPage() {
     setSupprimant(false)
   }
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-10 h-10 rounded-full border-2" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageSkeleton />
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>

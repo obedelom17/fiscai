@@ -304,7 +304,7 @@ export default function AuthPage() {
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(10,31,18,0.7) 0%, rgba(26,60,46,0.4) 100%)' }} />
         </div>
         <div className="relative z-10">
-          <Logo size={44} onDark subtitle="Experts Afrique Conseils" />
+          <Logo size={44} onDark subtitle="Gestion fiscale pour cabinets" />
         </div>
 
         <div className="relative z-10">

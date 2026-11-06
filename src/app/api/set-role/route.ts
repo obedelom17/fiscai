@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Cloisonnement : la cible doit appartenir au cabinet de l'admin (le RLS ne montre que ces profils)
+    const { data: cible } = await supabase.from('collaborateurs').select('id').eq('id', collaborateurId).maybeSingle()
+    if (!cible) return NextResponse.json({ error: 'Collaborateur introuvable dans votre cabinet' }, { status: 404 })
+
     const admin = createAdminClient()
     const { error } = await admin
       .from('collaborateurs').update({ role }).eq('id', collaborateurId)

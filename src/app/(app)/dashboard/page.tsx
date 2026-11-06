@@ -9,8 +9,11 @@ import Link from 'next/link'
 import GlobalSearch from '@/components/GlobalSearch'
 import { BannerImage } from '@/components/PageHeader'
 import type { DossierFiscal, Relance, AuditLog } from '@/lib/types'
+import { PageSkeleton } from '@/components/Skeleton'
+import { useCabinet } from '@/lib/useCabinet'
 
 export default function DashboardHome() {
+  const { cabinet } = useCabinet()
   const [user, setUser] = usePersistentState<{ prenom: string; nom: string; avatar_url: string | null; role: string } | null>('home.user', null)
   const [stats, setStats] = usePersistentState('home.stats', { clients: 0, dossiers: 0, enAttente: 0, alertes: 0 })
   const [dossiersUrgents, setDossiersUrgents] = usePersistentState<DossierFiscal[]>('home.urgents', [])
@@ -100,11 +103,7 @@ export default function DashboardHome() {
     COMMENTAIRE: 'Commentaire ajouté',
   }
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageSkeleton />
 
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
@@ -112,7 +111,7 @@ export default function DashboardHome() {
       <div className="relative h-40 md:h-48 overflow-hidden" style={{ backgroundColor: '#0b1f16', backgroundImage: 'url(/banners/home.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <BannerImage banner="home" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(10,31,18,0.80) 0%, rgba(26,60,46,0.65) 60%, rgba(45,106,79,0.4) 100%)' }} />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 0%, transparent 50%, #f0f4f1 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 0%, transparent 50%, var(--surface) 100%)' }} />
         <div className="absolute top-4 right-4 md:right-8">
           <button
             onClick={() => setShowSearch(true)}
@@ -149,7 +148,7 @@ export default function DashboardHome() {
           </div>
           <div className="pb-2 pt-10 md:pt-16">
             <h1 className="text-lg md:text-2xl font-bold text-gray-800">{salutation}, {user?.prenom} !</h1>
-            <p className="text-gray-500 text-xs md:text-sm mt-0.5">{user?.role === 'admin' ? 'Administrateur' : 'Collaborateur'} — Experts Afrique Conseils</p>
+            <p className="text-gray-500 text-xs md:text-sm mt-0.5">{user?.role === 'admin' ? 'Administrateur' : 'Collaborateur'} — {cabinet?.nom ?? ''}</p>
           </div>
         </div>
 

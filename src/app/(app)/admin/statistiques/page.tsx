@@ -1,12 +1,14 @@
 'use client'
 
 
+import { PageSkeleton } from '@/components/Skeleton'
 import PageHeader from '@/components/PageHeader'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { usePersistentState, hasCache } from '@/lib/cache'
 import { motion } from 'framer-motion'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { useCabinet } from '@/lib/useCabinet'
 
 type Dossier = {
   id: string
@@ -28,6 +30,7 @@ type Relance = {
 }
 
 export default function StatistiquesPage() {
+  const { cabinet } = useCabinet()
   const [dossiers, setDossiers] = usePersistentState<Dossier[]>('stats.dossiers', [])
   const [relances, setRelances] = usePersistentState<Relance[]>('stats.relances', [])
   const [loading, setLoading] = useState(!hasCache('stats.dossiers'))
@@ -121,15 +124,7 @@ export default function StatistiquesPage() {
     ? Math.round(dataReactivite.reduce((acc, c) => acc + c.delai, 0) / dataReactivite.length)
     : null
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-10 h-10 rounded-full border-2"
-        style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageSkeleton />
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
@@ -137,7 +132,7 @@ export default function StatistiquesPage() {
       <PageHeader
   banner="stats"
   titre="Tableau de bord"
-  sousTitre="Vue d'ensemble de la conformité fiscale — Experts Afrique Conseils"
+  sousTitre={`Vue d'ensemble de la conformité fiscale${cabinet ? ' — ' + cabinet.nom : ''}`}
   />
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">

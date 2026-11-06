@@ -4,6 +4,8 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient as creerClientAdmin } from '@/lib/supabase-admin'
+import { evaluerLimite } from '@/lib/rate-limit'
 import Groq from 'groq-sdk'
 
 function getGroq() {
@@ -174,6 +176,20 @@ export async function POST(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  // Limitation de débit : 12 requêtes/minute et 300/jour par utilisateur (échoue ouvert si la table est absente)
+  try {
+    const admin = creerClientAdmin()
+    const il_y_a_1min = new Date(Date.now() - 60_000).toISOString()
+    const il_y_a_1j = new Date(Date.now() - 86_400_000).toISOString()
+    const [{ count: min }, { count: jour }] = await Promise.all([
+      admin.from('api_usage').select('*', { count: 'exact', head: true }).eq('key', user.id).eq('route', 'assistant').gte('created_at', il_y_a_1min),
+      admin.from('api_usage').select('*', { count: 'exact', head: true }).eq('key', user.id).eq('route', 'assistant').gte('created_at', il_y_a_1j),
+    ])
+    const verdict = evaluerLimite(min ?? 0, jour ?? 0, { parMinute: 12, parJour: 300 })
+    if (!verdict.ok) return NextResponse.json({ error: verdict.raison }, { status: 429 })
+    await admin.from('api_usage').insert({ key: user.id, route: 'assistant' })
+  } catch { /* limitation indisponible : on laisse passer */ }
 
   const { message, contexte, historique = [] } = await request.json()
   if (!message?.trim()) return NextResponse.json({ error: 'Message vide' }, { status: 400 })

@@ -57,7 +57,7 @@ export default function PageHeader({ titre, sousTitre, banner = 'dashboard', bou
       <div className="absolute inset-0"
         style={{ background: 'linear-gradient(135deg, rgba(10,31,18,0.82) 0%, rgba(26,60,46,0.68) 60%, rgba(45,106,79,0.4) 100%)' }} />
       <div className="absolute inset-0"
-        style={{ background: 'linear-gradient(to bottom, transparent 30%, #f0f4f1 100%)' }} />
+        style={{ background: 'linear-gradient(to bottom, transparent 30%, var(--surface) 100%)' }} />
       <div className="absolute inset-0 flex items-end justify-between px-4 sm:px-8 pb-4 sm:pb-6">
         <div className="min-w-0 flex-1">
           <motion.h1

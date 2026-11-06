@@ -5,12 +5,17 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { usePersistentState, hasCache } from '@/lib/cache'
 import { motion, AnimatePresence } from 'framer-motion'
+import { PageSkeleton } from '@/components/Skeleton'
 import PageHeader from '@/components/PageHeader'
 import { useToast } from '@/components/Toast'
 import GlobalSearch from '@/components/GlobalSearch'
 import DossierForm from '@/components/DossierForm'
 import DossierPanel from '@/components/DossierPanel'
 import AuditTab from '@/components/AuditTab'
+import GenererEcheancesModal from '@/components/GenererEcheancesModal'
+import ExportMenu from '@/components/ExportMenu'
+import { EmptyState } from '@/components/Skeleton'
+import { estimerPenalite, formatFcfa } from '@/lib/penalites'
 import { STATUT_LABELS, ACOMPTES, getAcompteEcheance, formatPeriode } from '@/lib/types'
 
 const MOIS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
@@ -46,6 +51,7 @@ export default function DossiersPage() {
   const [onglet, setOnglet] = useState<'dossiers' | 'relances' | 'modeles' | 'audit'>('dossiers')
   const [filtreStatut, setFiltreStatut] = useState('tous')
   const [showForm, setShowForm] = useState(false)
+  const [showGen, setShowGen] = useState(false)
   const [dossierActif, setDossierActif] = useState<Dossier | null>(null)
   const [dossierEnEdition, setDossierEnEdition] = useState<Dossier | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
@@ -229,12 +235,7 @@ export default function DossiersPage() {
 
   const dossiersFiltres = dossiers.filter(d => filtreStatut === 'tous' || d.statut === filtreStatut)
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#f0f4f1' }}>
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-10 h-10 rounded-full border-2" style={{ borderColor: '#2d6a4f', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageSkeleton />
 
   const stats = {
     total: dossiers.length,
@@ -247,12 +248,21 @@ export default function DossiersPage() {
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
       <PageHeader banner="dossiers" titre="Dossiers Fiscaux" sousTitre="Suivi des obligations fiscales — OTR Togo"
         bouton={
-          <button onClick={() => { resetForm(); setShowForm(true) }}
-            className="px-4 py-2 rounded-md text-white text-sm font-medium"
-            style={{ background: 'linear-gradient(135deg,#f0b429,#e8a317)', boxShadow: '0 6px 16px rgba(232,163,23,0.35)' }}>
-            + Nouveau
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
+              <ExportMenu />
+              <button onClick={() => setShowGen(true)} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-white shadow-sm border border-gray-100" style={{ color: '#1a3c2e' }}>
+                Générer les échéances
+              </button>
+            </div>
+            <button onClick={() => { resetForm(); setShowForm(true) }}
+              className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold"
+              style={{ background: 'linear-gradient(135deg,#f0b429,#e8a317)', boxShadow: '0 6px 16px rgba(232,163,23,0.35)' }}>
+              + Nouveau
+            </button>
+          </div>
         } />
+      <GenererEcheancesModal ouvert={showGen} onClose={() => setShowGen(false)} onDone={() => charger()} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
 
@@ -271,6 +281,15 @@ export default function DossiersPage() {
             </motion.div>
           ))}
         </div>
+
+        {(() => {
+          const total = dossiers.reduce((t: number, d: { statut: string; montant: number | null; date_echeance: string }) => t + (d.statut !== 'televerse_otr' ? (estimerPenalite(d.montant, d.date_echeance)?.total ?? 0) : 0), 0)
+          return total > 0 ? (
+            <p className="mb-4 text-sm rounded-xl px-4 py-2.5 bg-red-50" style={{ color: '#991b1b' }}>
+              Pénalités estimées sur les dossiers en retard : <strong>{formatFcfa(total)}</strong> <span className="opacity-70">(indicatif, à valider)</span>
+            </p>
+          ) : null
+        })()}
 
         {/* Suggestions IA */}
         <AnimatePresence>
@@ -388,6 +407,8 @@ export default function DossiersPage() {
                             </td>
                             <td className="px-3 py-3 text-sm font-medium whitespace-nowrap" style={{ color: '#1a3c2e' }}>
                               {d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} FCFA` : '—'}
+                              {(() => { const p = d.statut !== 'televerse_otr' ? estimerPenalite(d.montant, d.date_echeance) : null
+                                return p ? <span className="block text-[11px] font-normal" style={{ color: '#dc2626' }} title="Estimation indicative : majoration + intérêts de retard">+ {formatFcfa(p.total)} pén. est.</span> : null })()}
                             </td>
                             <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                               <select value={d.statut} onChange={e => changerStatut(d.id, e.target.value)}
@@ -412,7 +433,7 @@ export default function DossiersPage() {
                   </table>
                 </div>
                 {dossiersFiltres.length === 0 && (
-                  <div className="text-center py-12 text-gray-400 text-sm">Aucun dossier</div>
+                  <EmptyState titre="Aucun dossier" description="Créez un dossier, importez-en depuis Excel, ou générez automatiquement les échéances de l'année." action={<button onClick={() => setShowGen(true)} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'linear-gradient(135deg,#2d6a4f,#1a3c2e)' }}>Générer les échéances</button>} />
                 )}
               </div>
 

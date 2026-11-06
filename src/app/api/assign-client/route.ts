@@ -41,6 +41,14 @@ export async function POST(req: NextRequest) {
     const { clientId, collaborateurId } = await req.json()
     if (!clientId) return NextResponse.json({ error: 'clientId requis' }, { status: 400 })
 
+    // Le RLS ne renvoie que les lignes du cabinet de l'admin : on vérifie que le client et le collaborateur en font partie.
+    const { data: clientOk } = await supabase.from('clients').select('id').eq('id', clientId).maybeSingle()
+    if (!clientOk) return NextResponse.json({ error: 'Client introuvable' }, { status: 404 })
+    if (collaborateurId) {
+      const { data: collabOk } = await supabase.from('collaborateurs').select('id').eq('id', collaborateurId).maybeSingle()
+      if (!collabOk) return NextResponse.json({ error: 'Collaborateur introuvable dans votre cabinet' }, { status: 404 })
+    }
+
     const admin = createAdminClient()
     const { error } = await admin
       .from('clients')

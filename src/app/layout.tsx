@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import PwaRegister from "@/components/PwaRegister";
+import { SCRIPT_THEME } from "@/components/ThemeToggle";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
@@ -39,8 +40,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={inter.variable}>
+    <html lang="fr" className={inter.variable} suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: SCRIPT_THEME }} /></head>
       <body>
+        <a href="#contenu" className="skip-link">Aller au contenu</a>
         <PwaRegister />
         {children}
       </body>
