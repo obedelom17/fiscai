@@ -135,8 +135,9 @@ export default function StatistiquesPage() {
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
 
       <PageHeader
+  banner="stats"
   titre="Tableau de bord"
-  sousTitre="Vue d'ensemble de la conformité fiscale"
+  sousTitre="Vue d'ensemble de la conformité fiscale — Experts Afrique Conseils"
   />
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
@@ -151,7 +152,7 @@ export default function StatistiquesPage() {
           ].map((kpi, i) => (
             <motion.div key={i}
               className="bg-white rounded-lg p-5 shadow-sm border border-gray-100 cursor-default">
-              <p className="text-xs font-semibold text-gray-500">{kpi.label}</p>
+              <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">{kpi.label}</p>
               <p className="text-3xl md:text-4xl font-semibold mt-2" style={{ color: kpi.color }}>{kpi.value}</p>
               <div className="mt-3 w-full h-1.5 rounded-full" style={{ background: '#f3f4f6' }}>
                 <motion.div

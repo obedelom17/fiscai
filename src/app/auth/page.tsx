@@ -295,15 +295,17 @@ export default function AuthPage() {
     <div className="min-h-screen flex overflow-hidden" style={{ background: '#0f2318' }}>
 
       {/* Panneau gauche */}
-      <div className="hidden lg:flex flex-col justify-between w-[55%] relative p-14">
+      <div className="hidden lg:flex flex-col justify-between w-[55%] relative p-14"
+        style={{ backgroundImage: 'url(/banners/auth.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(11,31,22,0.55) 0%, rgba(11,31,22,0.25) 100%)' }} />
         <div className="relative z-10">
-          <Logo size={40} onDark />
+          <Logo size={44} onDark subtitle="Experts Afrique Conseils" />
         </div>
 
         <div className="relative z-10">
           <motion.h1
-            className="text-4xl xl:text-5xl font-semibold tracking-tight text-white leading-tight mb-8">
-            Vos dossiers fiscaux,<br />toujours à jour
+            className="text-4xl xl:text-5xl font-bold tracking-tight text-white leading-tight mb-8">
+            Vos dossiers fiscaux,<br /><span style={{ color: '#e8a317' }}>toujours à jour</span>
           </motion.h1>
 
           <div className="space-y-4">
@@ -312,8 +314,8 @@ export default function AuthPage() {
                 key={i}
                 className="flex items-center gap-3">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ border: '1px solid rgba(255,255,255,0.35)' }}>
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#ffffff' }} />
+                  style={{ border: '1px solid rgba(232,163,23,0.6)', background: 'rgba(232,163,23,0.12)' }}>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#e8a317' }} />
                 </div>
                 <span className="text-white/80 text-sm font-medium">{text}</span>
               </motion.div>
@@ -328,7 +330,7 @@ export default function AuthPage() {
 
       {/* Panneau droit */}
       <div className="flex-1 flex items-center justify-center p-6 relative"
-        style={{ background: '#f8fafb' }}>
+        style={{ background: 'radial-gradient(80% 60% at 100% 0%, #e6efe9 0%, #f8fafb 60%)' }}>
 
 
         <div className="w-full max-w-md relative z-10">
@@ -340,7 +342,7 @@ export default function AuthPage() {
 
           {/* Card */}
           <motion.div
-            className="bg-white rounded-lg p-8 border border-gray-100">
+            className="bg-white rounded-3xl p-8 border border-gray-100" style={{ boxShadow: '0 24px 60px rgba(15,35,24,0.12), 0 2px 6px rgba(15,35,24,0.05)' }}>
 
             {/* Onglets */}
             <div className="flex bg-gray-100 rounded-lg p-1 mb-7 relative">
@@ -369,7 +371,7 @@ export default function AuthPage() {
                 transition={{ duration: 0.2 }}
                 className="mb-6">
                 <h2 className="text-xl font-semibold text-gray-800">
-                  {mode === 'connexion' ? 'Bon retour ' : 'Créer un compte'}
+                  {mode === 'connexion' ? 'Bon retour !' : 'Créer un compte'}
                 </h2>
                 <p className="text-gray-400 text-sm mt-0.5">
                   {mode === 'connexion'

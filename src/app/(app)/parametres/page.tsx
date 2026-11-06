@@ -168,6 +168,7 @@ export default function ParametresPage() {
   return (
     <div style={{ background: '#f0f4f1' }}>
       <PageHeader
+        banner="parametres"
         titre="Paramètres"
         sousTitre="Gérez votre profil et vos informations de connexion"
         />

@@ -99,6 +99,7 @@ export default function ClientsPage() {
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
       <PageHeader
+        banner="clients"
         titre="Portefeuille Clients"
         sousTitre={`${clients.length} entreprise(s) enregistrée(s)`}
         bouton={
@@ -121,7 +122,7 @@ export default function ClientsPage() {
           ].map((s, i) => (
             <motion.div key={i}
               className="bg-white rounded-lg p-4 md:p-5 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-500 font-semibold">{s.label}</p>
+              <p className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">{s.label}</p>
               <p className="text-2xl md:text-3xl font-semibold mt-1" style={{ color: s.color }}>{s.value}</p>
             </motion.div>
           ))}

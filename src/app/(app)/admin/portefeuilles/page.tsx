@@ -75,6 +75,7 @@ export default function PortefeuillesPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
       <PageHeader
+        banner="portefeuilles"
         titre="Gestion des Portefeuilles"
         sousTitre="Attribution des clients aux collaborateurs du cabinet"
         />

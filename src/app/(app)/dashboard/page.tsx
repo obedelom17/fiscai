@@ -107,24 +107,37 @@ export default function DashboardHome() {
 
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
-      {/* En-tête */}
-      <div className="bg-white border-b" style={{ borderColor: 'var(--line)' }}>
-        <div className="flex items-center justify-between gap-4 px-4 md:px-8 py-5 md:py-6">
-          <div className="min-w-0">
-            <h1 className="text-lg md:text-2xl font-semibold tracking-tight truncate" style={{ color: 'var(--green-900)' }}>{salutation}, {user?.prenom}</h1>
-            <p className="text-gray-500 text-xs md:text-sm mt-1">{user?.role === 'admin' ? 'Administrateur' : 'Collaborateur'}</p>
-          </div>
+      {/* Bandeau */}
+      <div className="page-banner" style={{ backgroundImage: 'url(/banners/home.svg)' }}>
+        <div className="flex justify-end px-4 md:px-8 pt-5">
           <button
             onClick={() => setShowSearch(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium border bg-white hover:bg-gray-50 transition-colors flex-shrink-0"
-            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-medium transition-colors flex-shrink-0 text-white hover:bg-white/20"
+            style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(8px)' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <span className="hidden md:inline">Rechercher</span>
-            <span className="hidden md:inline text-xs text-gray-400">Ctrl+K</span>
+            <span className="hidden md:inline">Recherche globale</span>
+            <span className="hidden md:inline text-xs text-white/60">Ctrl+K</span>
           </button>
+        </div>
+        <div className="px-4 md:px-8 pt-16 md:pt-20 pb-6 flex items-end gap-4">
+          <div className="relative flex-shrink-0">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="w-16 h-16 md:w-[72px] md:h-[72px] rounded-2xl object-cover" style={{ boxShadow: '0 0 0 4px #fff, 0 10px 24px rgba(15,35,24,0.25)' }} />
+            ) : (
+              <div className="w-16 h-16 md:w-[72px] md:h-[72px] rounded-2xl flex items-center justify-center text-white text-xl font-bold"
+                style={{ background: 'linear-gradient(135deg,#2d6a4f,#1a3c2e)', boxShadow: '0 0 0 4px #fff, 0 10px 24px rgba(15,35,24,0.25)' }}>
+                {user?.prenom?.[0]}{user?.nom?.[0]}
+              </div>
+            )}
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white" style={{ background: '#22c55e' }} />
+          </div>
+          <div className="min-w-0 pb-1">
+            <h1 className="text-xl md:text-[28px] font-bold tracking-tight truncate" style={{ color: 'var(--green-900)' }}>{salutation}, {user?.prenom} !</h1>
+            <p className="text-gray-500 text-xs md:text-sm mt-0.5">{user?.role === 'admin' ? 'Administrateur' : 'Collaborateur'} — Experts Afrique Conseils</p>
+          </div>
         </div>
       </div>
 
@@ -137,14 +150,14 @@ export default function DashboardHome() {
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
           {[
-            { label: 'Clients', value: stats.clients, color: '#2d6a4f', href: '/dashboard/clients' },
-            { label: 'Dossiers', value: stats.dossiers, color: '#2d6a4f', href: '/dashboard/dossiers' },
-            { label: 'En attente', value: stats.enAttente, color: '#2d6a4f', href: '/dashboard/dossiers' },
+            { label: 'Clients', value: stats.clients, color: '#1a5c3e', href: '/dashboard/clients' },
+            { label: 'Dossiers', value: stats.dossiers, color: '#2563eb', href: '/dashboard/dossiers' },
+            { label: 'En attente', value: stats.enAttente, color: '#d97706', href: '/dashboard/dossiers' },
             { label: 'Alertes OTR', value: stats.alertes, color: stats.alertes > 0 ? '#dc2626' : '#2d6a4f', href: '/admin/statistiques' },
           ].map((kpi, i) => (
             <motion.div key={i}>
               <Link href={kpi.href} className="block bg-white rounded-lg p-4 md:p-5 shadow-sm border border-gray-100">
-                <p className="text-xs text-gray-500 font-semibold">{kpi.label}</p>
+                <p className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">{kpi.label}</p>
                 <p className="text-3xl md:text-4xl font-semibold mt-1 md:mt-2" style={{ color: kpi.color }}>{kpi.value}</p>
               </Link>
             </motion.div>
@@ -156,9 +169,9 @@ export default function DashboardHome() {
           {/* Actions rapides */}
           <motion.div
             className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-800 text-sm">Actions rapides</h2>
-              <p className="text-gray-400 text-xs mt-0.5">Raccourcis</p>
+            <div className="card-head px-5 py-4">
+              <h2 className="font-semibold text-white text-sm">Actions rapides</h2>
+              <p className="text-xs mt-0.5" style={{ color: "#a7e3c8" }}>Raccourcis</p>
             </div>
             <div className="p-3 md:p-4 space-y-1.5">
               {actionsRapides.map((action, i) => (
@@ -184,11 +197,11 @@ export default function DashboardHome() {
           {/* Dossiers urgents du jour */}
           <motion.div
             className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
+            <div className="card-head px-5 py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="font-semibold text-gray-800 text-sm">Dossiers urgents</h2>
-                  <p className="text-gray-400 text-xs mt-0.5">Échéances dans les 5 prochains jours</p>
+                  <h2 className="font-semibold text-white text-sm">Dossiers urgents</h2>
+                  <p className="text-xs mt-0.5" style={{ color: "#a7e3c8" }}>Échéances dans les 5 prochains jours</p>
                 </div>
                 {stats.alertes > 0 && (
                   <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">{stats.alertes}</span>
@@ -247,12 +260,12 @@ export default function DashboardHome() {
           {/* Dernières relances */}
           <motion.div
             className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="card-head px-5 py-4 flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-gray-800 text-sm">Dernières relances</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Historique récent</p>
+                <h2 className="font-semibold text-white text-sm">Dernières relances</h2>
+                <p className="text-xs mt-0.5" style={{ color: "#a7e3c8" }}>Historique récent</p>
               </div>
-              <Link href="/dashboard/dossiers" className="text-xs font-medium" style={{ color: '#2d6a4f' }}>Voir tout</Link>
+              <Link href="/dashboard/dossiers" className="text-xs font-medium" style={{ color: '#f6c453' }}>Voir tout</Link>
             </div>
             <div className="p-3 md:p-4">
               {dernieresRelances.length === 0 ? (
@@ -282,10 +295,10 @@ export default function DashboardHome() {
           {/* Activité récente */}
           <motion.div
             className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="card-head px-5 py-4 flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-gray-800 text-sm">Activité récente</h2>
-                <p className="text-gray-400 text-xs mt-0.5">Actions de l'équipe</p>
+                <h2 className="font-semibold text-white text-sm">Activité récente</h2>
+                <p className="text-xs mt-0.5" style={{ color: "#a7e3c8" }}>Actions de l'équipe</p>
               </div>
             </div>
             <div className="p-3 md:p-4">

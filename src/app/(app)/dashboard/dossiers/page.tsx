@@ -245,11 +245,11 @@ export default function DossiersPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f0f4f1' }}>
-      <PageHeader titre="Dossiers Fiscaux" sousTitre="Suivi des obligations fiscales OTR"
+      <PageHeader banner="dossiers" titre="Dossiers Fiscaux" sousTitre="Suivi des obligations fiscales — OTR Togo"
         bouton={
           <button onClick={() => { resetForm(); setShowForm(true) }}
             className="px-4 py-2 rounded-md text-white text-sm font-medium"
-            style={{ background: 'rgba(232,163,23,0.9)', backdropFilter: 'blur(4px)' }}>
+            style={{ background: 'linear-gradient(135deg,#f0b429,#e8a317)', boxShadow: '0 6px 16px rgba(232,163,23,0.35)' }}>
             + Nouveau
           </button>
         } />
@@ -266,7 +266,7 @@ export default function DossiersPage() {
           ].map((s, i) => (
             <motion.div key={i}
               className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-              <p className="text-xs text-gray-500 font-semibold">{s.label}</p>
+              <p className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">{s.label}</p>
               <p className="text-3xl font-semibold mt-1" style={{ color: s.color }}>{s.value}</p>
             </motion.div>
           ))}
@@ -276,10 +276,10 @@ export default function DossiersPage() {
         <AnimatePresence>
           {showSuggestions && suggestions.length > 0 && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-              className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-5">
+              className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5" style={{ borderLeft: '4px solid #e8a317', background: 'linear-gradient(135deg,#fffbeb,#fef3c7)' }}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-amber-700 mb-2">Suggestions IA</p>
+                  <p className="text-[11px] font-bold text-amber-800 mb-2 uppercase tracking-wider">Suggestions IA</p>
                   {suggestions.map((s, i) => (
                     <div key={i} className="flex items-start gap-2 text-sm text-amber-700">
                       <span className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -352,9 +352,9 @@ export default function DossiersPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px]">
                     <thead>
-                      <tr style={{ background: '#f3f6f4', borderBottom: '1px solid #e3e8e5' }}>
+                      <tr style={{ background: 'linear-gradient(135deg,#1a3c2e,#245c43)' }}>
                         {['Client', 'Type', 'Période', 'Échéance', 'Statut', 'Montant (FCFA)', 'Changer statut', 'Actions'].map(h => (
-                          <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
+                          <th key={h} className="text-left px-3 py-3.5 text-[11px] font-semibold text-white/90 uppercase tracking-wider whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>

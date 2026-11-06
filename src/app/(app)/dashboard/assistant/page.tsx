@@ -151,6 +151,7 @@ ${dossiers?.map((d: any) => `- ${(d.clients as any)?.raison_sociale} | ${d.type_
   return (
     <div className="h-screen flex flex-col" style={{ background: '#f0f4f1' }}>
       <PageHeader
+        banner="assistant"
         titre="Assistant IA"
         sousTitre="Interrogez vos données fiscales en langage naturel"
         bouton={

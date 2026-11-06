@@ -100,6 +100,7 @@ export default function CalendrierPage() {
   return (
     <div style={{ background: '#f0f4f1', minHeight: '100vh' }}>
       <PageHeader
+        banner="calendrier"
         titre="Calendrier Fiscal"
         sousTitre="Vue mensuelle des échéances OTR"
         />

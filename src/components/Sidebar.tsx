@@ -133,11 +133,9 @@ export default function Sidebar() {
     return (
       <Link href={lien.href}
         title={collapsed && !isDrawer ? lien.label : undefined}
-        className={`flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/5 ${collapsed && !isDrawer ? 'justify-center px-0' : ''}`}
-        style={actif
-          ? { background: 'rgba(255,255,255,0.12)', color: '#ffffff' }
-          : { color: 'rgba(255,255,255,0.68)' }}>
-        <span style={{ color: actif ? '#ffffff' : 'rgba(255,255,255,0.5)' }} className="flex-shrink-0">{lien.icon}</span>
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.07] ${actif ? 'nav-active' : ''} ${collapsed && !isDrawer ? 'justify-center px-0' : ''}`}
+        style={actif ? undefined : { color: 'rgba(255,255,255,0.72)' }}>
+        <span style={{ color: actif ? '#f6c453' : 'rgba(255,255,255,0.55)' }} className="flex-shrink-0">{lien.icon}</span>
         {(!collapsed || isDrawer) && <span className="truncate">{lien.label}</span>}
       </Link>
     )
@@ -163,7 +161,8 @@ export default function Sidebar() {
           <div className="flex items-center gap-2">
             <LogoMark size={36} />
             <div className="min-w-0 flex-1">
-              <p className="text-white font-semibold text-base leading-none tracking-tight">FiscAI</p>
+              <p className="text-white font-bold text-base leading-none tracking-tight">Fisc<span style={{ color: '#e8a317' }}>AI</span></p>
+              <p className="text-[11px] leading-none mt-1.5 truncate" style={{ color: '#6ee7b7' }}>Experts Afrique Conseils</p>
             </div>
             {isDrawer ? (
               <button className="text-white/50 hover:text-white p-1 flex-shrink-0" onClick={() => setOpen(false)}>
@@ -187,7 +186,7 @@ export default function Sidebar() {
         <div className="pt-4 mt-2 border-t border-white/10">
           {(!collapsed || isDrawer) ? (
             <div className="flex items-center justify-between px-2.5 mb-2">
-              <p className="text-xs text-white/40">Compte</p>
+              <p className="text-[10px] font-semibold text-white/35 uppercase tracking-[0.14em]">Compte</p>
               <Cloche isDrawer={isDrawer} />
             </div>
           ) : (
@@ -198,11 +197,9 @@ export default function Sidebar() {
 
           <Link href="/parametres"
             title={collapsed && !isDrawer ? 'Paramètres' : undefined}
-            className={`flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-sm font-medium transition-all ${collapsed && !isDrawer ? 'justify-center px-0' : ''}`}
-            style={pathname === '/parametres'
-              ? { background: 'rgba(255,255,255,0.12)', color: '#ffffff' }
-              : { color: 'rgba(255,255,255,0.68)' }}>
-            <svg className="w-5 h-5 flex-shrink-0" style={{ color: pathname === '/parametres' ? '#ffffff' : 'rgba(255,255,255,0.5)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.07] ${pathname === '/parametres' ? 'nav-active' : ''} ${collapsed && !isDrawer ? 'justify-center px-0' : ''}`}
+            style={pathname === '/parametres' ? undefined : { color: 'rgba(255,255,255,0.72)' }}>
+            <svg className="w-5 h-5 flex-shrink-0" style={{ color: pathname === '/parametres' ? '#f6c453' : 'rgba(255,255,255,0.55)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -214,13 +211,13 @@ export default function Sidebar() {
       {/* Profil + Déco */}
       <div className="px-2 py-3 border-t border-white/10">
         {user && (
-          <div className={`flex items-center gap-3 px-2 py-2.5 rounded-lg mb-1 ${collapsed && !isDrawer ? 'justify-center' : ''}`}
-            style={{ background: 'rgba(255,255,255,0.05)' }}>
+          <div className={`flex items-center gap-3 px-2.5 py-2.5 rounded-xl mb-1 ${collapsed && !isDrawer ? 'justify-center' : ''}`}
+            style={{ background: 'rgba(255,255,255,0.07)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06)' }}>
             {user.avatar_url ? (
-              <img src={user.avatar_url} alt="Avatar" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" title={collapsed && !isDrawer ? `${user.prenom} ${user.nom}` : undefined} />
+              <img src={user.avatar_url} alt="Avatar" className="w-9 h-9 rounded-xl object-cover flex-shrink-0 ring-1 ring-white/20" title={collapsed && !isDrawer ? `${user.prenom} ${user.nom}` : undefined} />
             ) : (
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                style={{ background: '#2d6a4f' }}
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ring-1 ring-white/20"
+                style={{ background: 'linear-gradient(135deg,#2d6a4f,#1a3c2e)' }}
                 title={collapsed && !isDrawer ? `${user.prenom} ${user.nom}` : undefined}>
                 {user.prenom?.[0]}{user.nom?.[0]}
               </div>
@@ -249,8 +246,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Topbar mobile */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 border-b border-white/10"
-        style={{ background: '#1a3c2e' }}>
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 border-b border-white/10 sidebar-surface">
         <div className="flex items-center gap-3">
           <LogoMark size={32} />
           <span className="text-white font-semibold text-base tracking-tight">FiscAI</span>
@@ -267,10 +263,10 @@ export default function Sidebar() {
 
       {/* Sidebar desktop */}
       <motion.aside
-        animate={{ width: collapsed ? 64 : 224 }}
+        animate={{ width: collapsed ? 72 : 248 }}
         transition={{ type: 'tween', duration: 0.2 }}
-        className="hidden lg:flex h-screen flex-col sticky top-0 flex-shrink-0"
-        style={{ background: '#1a3c2e' }}>
+        className="hidden lg:flex h-screen flex-col sticky top-0 flex-shrink-0 sidebar-surface"
+        style={{ boxShadow: '4px 0 24px rgba(11,31,22,0.18)' }}>
         <SidebarContent />
       </motion.aside>
 
@@ -282,8 +278,7 @@ export default function Sidebar() {
               className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setOpen(false)} />
             <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.22 }}
-              className="fixed top-0 left-0 h-full w-72 z-50 lg:hidden flex flex-col"
-              style={{ background: '#1a3c2e' }}>
+              className="fixed top-0 left-0 h-full w-72 z-50 lg:hidden flex flex-col sidebar-surface">
               <SidebarContent isDrawer />
             </motion.aside>
           </>
